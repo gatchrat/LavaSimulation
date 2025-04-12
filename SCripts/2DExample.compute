@@ -1,0 +1,57 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+struct LavaPoint {
+    float3 Position;
+    float3 Velocity;
+    float4 Color;
+};
+
+float TimePassed;
+float SmoothingRadius;
+RWStructuredBuffer<LavaPoint> Points;
+
+float3 CalcVelocity (LavaPoint Point) {
+    const float Gravity = 9.81f;
+    return float3(Point.Velocity.x,Point.Velocity.y-Gravity*TimePassed,Point.Velocity.z);
+}
+float3 CalcPosition (LavaPoint Point) {
+    return Point.Position+Point.Velocity*TimePassed;
+}
+float SmoothingKernel(float radius, float distance) {
+    float ret = max(0,radius*radius-distance*distance); // Cube for smoothing
+    return ret*ret*ret; //small values go smaller big values go bigger
+}
+float CalcDensity(float3 Position) {
+    float Density = 0f;
+    uint PointNumber;
+    uint ThrowAway;
+    Points.GetDimensions(PointNumber,ThrowAway);
+    for(uint i = 0; i<PointNumber; i++) {
+        float Distance = length(Position-Points[i].Position);
+        Density+=SmoothingKernel(SmoothingRadius,Distance);
+    }
+    return Density;
+}
+/*
+LavaPoint ReColor(LavaPoint Point) {
+    Point.Color =  float4(CalcDensity(Point.Position)*255,Point.Color.y,Point.Color.z,0);
+    return Point;
+}*/
+LavaPoint HandleCollision(LavaPoint Point) {
+    const float EnergyLossOnCollision = 0.5f;
+    if (Point.Position.y < 0) {
+        Point.Position.y = 0;
+        Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollision,Point.Velocity.z);
+    }
+    return Point;
+}
+
+[numthreads(10,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID) {
+    LavaPoint CurPoint = Points[id.x];
+    //CurPoint = ReColor(CurPoint);
+    //CurPoint.Velocity = CalcVelocity(CurPoint);
+    CurPoint.Position = CalcPosition(CurPoint);
+    Points[id.x] = HandleCollision(CurPoint);
+}
