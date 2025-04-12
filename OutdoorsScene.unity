@@ -404,9 +404,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ComputeShader: {fileID: 7200000, guid: a0918190062028b42a0064d66981cdf2, type: 3}
-  Count: 20
+  DensityCacher: {fileID: 7200000, guid: b1b760cecdf943a44a552b958c40de0e, type: 3}
+  Count: 40
   SmoothingRadius: 5
-  Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
   Material: {fileID: 2100000, guid: 0d23efb42eaa4ee43ab0d0c6c1868940, type: 2}
 --- !u!1 &1160943898
 GameObject:
@@ -656,7 +656,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   clearColorMode: 1
-  backgroundColorHDR: {r: 1, g: 1, b: 1, a: 1}
+  backgroundColorHDR: {r: 0.28223762, g: 0.07075472, b: 0.2830189, a: 1}
   clearDepth: 1
   volumeLayerMask:
     serializedVersion: 2

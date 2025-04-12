@@ -10,42 +10,68 @@ struct LavaPoint {
 float TimePassed;
 float SmoothingRadius;
 RWStructuredBuffer<LavaPoint> Points;
+RWStructuredBuffer<float> CachedDensities;
 
-float3 CalcVelocity (LavaPoint Point) {
-    const float Gravity = 9.81f;
-    return float3(Point.Velocity.x,Point.Velocity.y-Gravity*TimePassed,Point.Velocity.z);
-}
 float3 CalcPosition (LavaPoint Point) {
     return Point.Position+Point.Velocity*TimePassed;
 }
-float SmoothingKernel(float radius, float distance) {
-    float volume = 3.141*pow(radius,8)/4; // Volumne of area -> So we dont get higher density with bigger radius
-    //small values go smaller big values go bigger
-    float value = max(0,radius*radius -distance*distance);
-    return value*value*value/volume;
+
+float SmoothingKernelAbleitung(float radius, float distance) {
+    //Ableitung vom Kernel um die Steigung an einem Punkt zu finden um bei CalcDensityGradientOLD
+    // Nicht in jede richtung 2 mal zu berechnen
+    if(distance > radius) {
+        return 0;
+    }
+    float value = radius*radius -distance*distance;
+    float scale = 24/(3.141*pow(radius,8)); // was -24
+    return scale*distance*value*value;
 }
 
-float CalcDensity(float3 Position) {
+float3 CalcDensityGradient(int PointID) {
+    LavaPoint Point = Points[PointID];
+    float3 Position = Point.Position;
+    float3 Gradiant = float3(0,0,0);
     float Density = 0;
     uint PointNumber = 10;
     uint ThrowAway;
+    const float Speed = 300; // Kinda Inverse Viscosity since it makes particles to run away faster
     Points.GetDimensions(PointNumber,ThrowAway);
     for(uint i = 0; i<PointNumber; i++) {
         float Distance = length(Position-Points[i].Position);
-        Density+=SmoothingKernel(SmoothingRadius,Distance);
+        if(Distance != 0) {
+            float3 Direction = (Points[i].Position-Position)/Distance;
+            float Density = CachedDensities[PointID];
+            float Slope = SmoothingKernelAbleitung(SmoothingRadius,Distance);
+            Gradiant += Direction*Speed*Slope; //For other properties Multiply by current value and divide my Density, but for density it cancles out
+        }
     }
-    return Density;
+    return float3(Gradiant.x,Gradiant.y,0);
 }
 
-LavaPoint ReColor(LavaPoint Point) {
-    Point.Color =  float4(CalcDensity(Point.Position),0,0,0);
+float3 CalcVelocity (int PointID) {
+    LavaPoint Point = Points[PointID];
+    const float3 Gravity = float3(0,-9.81,0);
+    return Point.Velocity+Gravity*TimePassed-CalcDensityGradient(PointID)*TimePassed;
+}
+LavaPoint ReColor(int PointID) {
+    LavaPoint Point = Points[PointID];
+    Point.Color =  float4(CachedDensities[PointID],0,0,0);
     return Point;
 }
 LavaPoint HandleCollision(LavaPoint Point) {
     const float EnergyLossOnCollision = 0.5f;
+    const float EnergyLossOnCollisionFloor = 0.7f;
     if (Point.Position.y < 0) {
         Point.Position.y = 0;
-        Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollision,Point.Velocity.z);
+        Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollisionFloor,Point.Velocity.z);
+    }
+    if (Point.Position.x < -70) {
+        Point.Position.x = -70;
+        Point.Velocity = float3(-Point.Velocity.x*EnergyLossOnCollision,Point.Velocity.y,Point.Velocity.z);
+    }
+    if (Point.Position.x > 70) {
+        Point.Position.x = 70;
+        Point.Velocity = float3(-Point.Velocity.x*EnergyLossOnCollision,Point.Velocity.y,Point.Velocity.z);
     }
     return Point;
 }
@@ -53,8 +79,17 @@ LavaPoint HandleCollision(LavaPoint Point) {
 [numthreads(10,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID) {
     LavaPoint CurPoint = Points[id.x];
-    CurPoint = ReColor(CurPoint);
-    //CurPoint.Velocity = CalcVelocity(CurPoint);
+    CurPoint = ReColor(id.x);
+    CurPoint.Velocity = CalcVelocity(id.x);
     CurPoint.Position = CalcPosition(CurPoint);
     Points[id.x] = HandleCollision(CurPoint);
 }
+
+/*float3 CalcDensityGradientOLD(float3 Position) {
+    const float TimeStep = 0.1f; // Replace by Time.DeltaTime?
+    const float Speed = 3000;
+    float XDelta = CalcDensity(Position+ float3(1*TimeStep,0,0))-CalcDensity(Position);
+    float YDelta = CalcDensity(Position+ float3(0,1*TimeStep,0))-CalcDensity(Position);
+    //float ZDelta = CalcDensity(Position+ float3(0,0,1*TimeStep))-CalcDensity(Position);
+    return float3(XDelta,YDelta,0)*Speed;
+}*/
