@@ -1,0 +1,40 @@
+float SmoothingRadius;
+float SmoothingKernelPoly6(float dst, float radius) {
+    if (dst < radius) {
+        float v = radius * radius - dst * dst;
+        return v * v * v * 4 / (3.141 * pow(SmoothingRadius, 8));
+    }
+    return 0;
+}
+
+float SpikyKernelPow3(float dst, float radius) {
+    if (dst < radius) {
+        float v = radius - dst;
+        return v * v * v * 10 / (3.141* pow(SmoothingRadius, 5));
+    }
+    return 0;
+}
+
+float SpikyKernelPow2(float dst, float radius) {
+    if (dst < radius) {
+        float v = radius - dst;
+        return v * v * 6 / (3.141 * pow(SmoothingRadius, 4));
+    }
+    return 0;
+}
+
+float DerivativeSpikyPow3(float dst, float radius) {
+    if (dst <= radius) {
+        float v = radius - dst;
+        return -v * v * 30 / (pow(SmoothingRadius, 5) * 3.141);
+    }
+    return 0;
+}
+
+float DerivativeSpikyPow2(float dst, float radius) {
+    if (dst <= radius) {
+        float v = radius - dst;
+        return -v * 12 / (pow(SmoothingRadius, 4) * 3.141);
+    }
+    return 0;
+}

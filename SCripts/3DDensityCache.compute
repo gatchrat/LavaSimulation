@@ -1,24 +1,17 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
+#include "./Kernels.compute"
 struct LavaPoint {
     float3 Position;
     float3 Velocity;
     float4 Color;
 };
 
-float SmoothingRadius;
 RWStructuredBuffer<LavaPoint> Points;
 RWStructuredBuffer<float> CachedDensities;
 RWStructuredBuffer<float3> PredictedPosition;
 
-float SmoothingKernel(float radius, float distance) {
-    if(distance > radius) {
-        return 0;
-    }
-    float volume = (3.141*pow(radius,4))/6; // Volumne of area -> So we dont get higher density with bigger radius
-    return (radius-distance)*(radius-distance)/volume;
-}
 float CalcDensity(int PointID) {
     float Density = 0;
     uint PointNumber = 10;
@@ -28,8 +21,11 @@ float CalcDensity(int PointID) {
         if(PointNumber == PointID) {
             continue;
         }
-        float Distance = abs(length(PredictedPosition[i]-PredictedPosition[PointID]));
-        Density+=SmoothingKernel(SmoothingRadius,Distance);
+        float Direction = PredictedPosition[i]-PredictedPosition[PointID];
+        float Distance = sqrt(dot(Direction,Direction));
+        if(Distance < SmoothingRadius) {
+            Density+=SpikyKernelPow2(Distance,SmoothingRadius);
+        }
     }
     return Density;
 }

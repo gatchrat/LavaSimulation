@@ -12,7 +12,7 @@ RWStructuredBuffer<float3> PredictedPosition;
 
 float3 PredictPosition(int PointID) {
     LavaPoint CurPoint = Points[PointID];
-    float3 PredictedPosition = CurPoint.Position + CurPoint.Velocity/120;
+    float3 PredictedPosition = CurPoint.Position + (CurPoint.Velocity+float3(0,-9.81,0))/120;
     return PredictedPosition;
 }
 [numthreads(10,1,1)]

@@ -14,6 +14,7 @@ public class Test1 : MonoBehaviour
     public ComputeShader ComputeShader;
     public ComputeShader DensityCacher;
     public ComputeShader PositionPredicter;
+    public Gradient colourMap;
     public int Count;
     public float TargetDensity;
     public float PressureMultiplier;
@@ -52,8 +53,9 @@ public class Test1 : MonoBehaviour
         colors.Clear();
         foreach (var p in Points)
         {
-            matrices.Add(Matrix4x4.TRS(p.Position, Quaternion.identity, Vector3.one * 1));
-            colors.Add(p.Color);
+            matrices.Add(Matrix4x4.TRS(p.Position, Quaternion.identity, Vector3.one * 0.1f));
+            Color color = colourMap.Evaluate(p.Velocity.magnitude);
+            colors.Add(color);
         }
         for (int i = 0; i < matrices.Count; i += 1023)
         {
@@ -73,11 +75,11 @@ public class Test1 : MonoBehaviour
         };
         if (!RandomSpawns)
         {
-            Point.Position = new Vector3(-Count / 2 + x, y, 0);
+            Point.Position = new Vector3((-Count / 2 + x) * 0.1f, y * 0.1f, 0);
         }
         else
         {
-            Point.Position = new Vector3(UnityEngine.Random.Range(-70, 70), UnityEngine.Random.Range(0, 80), 0);
+            Point.Position = new Vector3(UnityEngine.Random.Range(-7, 7) * 0.1f, UnityEngine.Random.Range(0, 8) * 0.1f, 0);
         }
         Points[x * Count + y] = Point;
     }
