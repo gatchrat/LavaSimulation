@@ -1,0 +1,21 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+struct LavaPoint {
+    float3 Position;
+    float3 Velocity;
+    float4 Color;
+};
+
+RWStructuredBuffer<LavaPoint> Points;
+RWStructuredBuffer<float3> PredictedPosition;
+
+float3 PredictPosition(int PointID) {
+    LavaPoint CurPoint = Points[PointID];
+    float3 PredictedPosition = CurPoint.Position + CurPoint.Velocity/120;
+    return PredictedPosition;
+}
+[numthreads(10,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID) {
+    PredictedPosition[id.x] = PredictPosition(id.x);
+}

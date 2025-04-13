@@ -1,6 +1,6 @@
-using System.Data.Common;
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 struct LavaPoint
 {
@@ -13,13 +13,15 @@ public class Test1 : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     public ComputeShader ComputeShader;
     public ComputeShader DensityCacher;
+    public ComputeShader PositionPredicter;
     public int Count;
+    public float TargetDensity;
+    public float PressureMultiplier;
     public float SmoothingRadius = 10f;
     private Mesh Mesh;
     public Material Material;
+    public Boolean RandomSpawns = false;
     private LavaPoint[] Points;
-    private GameObject[] Objects;
-    private GameObject[] SmoothRadio;
     private MaterialPropertyBlock props;
     private List<Matrix4x4> matrices = new List<Matrix4x4>();
     private List<Vector4> colors = new List<Vector4>();
@@ -28,8 +30,6 @@ public class Test1 : MonoBehaviour
     void Start()
     {
         Points = new LavaPoint[Count * Count];
-        Objects = new GameObject[Count * Count];
-        SmoothRadio = new GameObject[Count * Count];
         for (int x = 0; x < Count; x++)
         {
             for (int y = 0; y < Count; y++)
@@ -46,7 +46,7 @@ public class Test1 : MonoBehaviour
     }
     private void RenderLava()
     {
-        Debug.Log(Points[0].Velocity);
+        Debug.Log(Points[0].Color);
         // Render in batches of 1023 (Unity limitation)
         matrices.Clear();
         colors.Clear();
@@ -69,9 +69,16 @@ public class Test1 : MonoBehaviour
 
         LavaPoint Point = new LavaPoint
         {
-            Position = new Vector3(Random.Range(-70, 70), Random.Range(0, 80), 0),
             Color = Color.white
         };
+        if (!RandomSpawns)
+        {
+            Point.Position = new Vector3(-Count / 2 + x, y, 0);
+        }
+        else
+        {
+            Point.Position = new Vector3(UnityEngine.Random.Range(-70, 70), UnityEngine.Random.Range(0, 80), 0);
+        }
         Points[x * Count + y] = Point;
     }
     private void ComputeLava()
@@ -81,21 +88,35 @@ public class Test1 : MonoBehaviour
         int VelocitySize = sizeof(float) * 3;
         int TotalSize = PositionSize + ColorSize + VelocitySize;
         float[] Densities = new float[Points.Length];
+        Vector3[] PredictedPositions = new Vector3[Points.Length];
+
         LavaBuffer = new ComputeBuffer(Points.Length, TotalSize);
         LavaBuffer.SetData(Points);
         ComputeBuffer DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float));
         DensityBuffer.SetData(Densities);
 
+        //Predict Positions 1 frame in the future, to improve reaction timing
+        ComputeBuffer PositionBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 3);
+        PositionBuffer.SetData(PredictedPositions);
+        PositionPredicter.SetBuffer(0, "Points", LavaBuffer);
+        PositionPredicter.SetBuffer(0, "PredictedPosition", PositionBuffer);
+        PositionPredicter.Dispatch(0, Points.Length / 10, 1, 1);
+
         //Cachses Densities to prevent expensive recalculation over and over again
         DensityCacher.SetBuffer(0, "Points", LavaBuffer);
         DensityCacher.SetBuffer(0, "CachedDensities", DensityBuffer);
+        DensityCacher.SetBuffer(0, "PredictedPosition", PositionBuffer);
         DensityCacher.SetFloat("TimePassed", Time.deltaTime);
         DensityCacher.SetFloat("SmoothingRadius", SmoothingRadius);
         DensityCacher.Dispatch(0, Points.Length / 10, 1, 1);
 
+
         ComputeShader.SetBuffer(0, "CachedDensities", DensityBuffer);
+        ComputeShader.SetBuffer(0, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(0, "Points", LavaBuffer);
         ComputeShader.SetFloat("TimePassed", Time.deltaTime);
+        ComputeShader.SetFloat("TargetDensity", TargetDensity);
+        ComputeShader.SetFloat("PressureMultiplier", PressureMultiplier);
         ComputeShader.SetFloat("SmoothingRadius", SmoothingRadius);
         ComputeShader.Dispatch(0, Points.Length / 10, 1, 1);
 
@@ -103,5 +124,6 @@ public class Test1 : MonoBehaviour
         RenderLava();
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
+        PositionBuffer.Dispose();
     }
 }

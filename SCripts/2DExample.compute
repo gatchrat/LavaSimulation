@@ -9,8 +9,11 @@ struct LavaPoint {
 
 float TimePassed;
 float SmoothingRadius;
+float TargetDensity; // How thick is the Liquid
+float PressureMultiplier; //How Fast should we reach the target state
 RWStructuredBuffer<LavaPoint> Points;
 RWStructuredBuffer<float> CachedDensities;
+RWStructuredBuffer<float3> PredictedPosition;
 
 float3 CalcPosition (LavaPoint Point) {
     return Point.Position+Point.Velocity*TimePassed;
@@ -22,14 +25,12 @@ float SmoothingKernelAbleitung(float radius, float distance) {
     if(distance > radius) {
         return 0;
     }
-    float value = radius*radius -distance*distance;
-    float scale = 24/(3.141*pow(radius,8)); // was -24
-    return scale*distance*value*value;
+    float scale = 12/(3.141*pow(radius,4));
+    return -(radius-distance)*scale;
 }
 
 float3 CalcDensityGradient(int PointID) {
     LavaPoint Point = Points[PointID];
-    float3 Position = Point.Position;
     float3 Gradiant = float3(0,0,0);
     float Density = 0;
     uint PointNumber = 10;
@@ -37,9 +38,9 @@ float3 CalcDensityGradient(int PointID) {
     const float Speed = 300; // Kinda Inverse Viscosity since it makes particles to run away faster
     Points.GetDimensions(PointNumber,ThrowAway);
     for(uint i = 0; i<PointNumber; i++) {
-        float Distance = length(Position-Points[i].Position);
+        float Distance = length(PredictedPosition[i]-PredictedPosition[PointID]);
         if(Distance != 0) {
-            float3 Direction = (Points[i].Position-Position)/Distance;
+            float3 Direction = (PredictedPosition[i]-PredictedPosition[PointID])/Distance;
             float Density = CachedDensities[PointID];
             float Slope = SmoothingKernelAbleitung(SmoothingRadius,Distance);
             Gradiant += Direction*Speed*Slope; //For other properties Multiply by current value and divide my Density, but for density it cancles out
@@ -51,8 +52,12 @@ float3 CalcDensityGradient(int PointID) {
 float3 CalcVelocity (int PointID) {
     LavaPoint Point = Points[PointID];
     const float3 Gravity = float3(0,-9.81,0);
-    return Point.Velocity+Gravity*TimePassed-CalcDensityGradient(PointID)*TimePassed;
+    Point.Velocity+=Gravity*TimePassed;
+    //F =a/m where m is the density because fluid
+    Point.Velocity +=CalcDensityGradient(PointID)*TimePassed;
+    return Point.Velocity;
 }
+
 LavaPoint ReColor(int PointID) {
     LavaPoint Point = Points[PointID];
     Point.Color =  float4(CachedDensities[PointID],0,0,0);
@@ -63,6 +68,10 @@ LavaPoint HandleCollision(LavaPoint Point) {
     const float EnergyLossOnCollisionFloor = 0.7f;
     if (Point.Position.y < 0) {
         Point.Position.y = 0;
+        Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollisionFloor,Point.Velocity.z);
+    }
+    if (Point.Position.y > 80) {
+        Point.Position.y = 80;
         Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollisionFloor,Point.Velocity.z);
     }
     if (Point.Position.x < -70) {
@@ -85,11 +94,131 @@ void CSMain (uint3 id : SV_DispatchThreadID) {
     Points[id.x] = HandleCollision(CurPoint);
 }
 
-/*float3 CalcDensityGradientOLD(float3 Position) {
-    const float TimeStep = 0.1f; // Replace by Time.DeltaTime?
-    const float Speed = 3000;
-    float XDelta = CalcDensity(Position+ float3(1*TimeStep,0,0))-CalcDensity(Position);
-    float YDelta = CalcDensity(Position+ float3(0,1*TimeStep,0))-CalcDensity(Position);
-    //float ZDelta = CalcDensity(Position+ float3(0,0,1*TimeStep))-CalcDensity(Position);
-    return float3(XDelta,YDelta,0)*Speed;
-}*/
+/*
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+struct LavaPoint {
+    float3 Position;
+    float3 Velocity;
+    float4 Color;
+};
+
+float TimePassed;
+float SmoothingRadius;
+float TargetDensity; // How thick is the Liquid
+float PressureMultiplier; //How Fast should we reach the target state
+RWStructuredBuffer<LavaPoint> Points;
+RWStructuredBuffer<float> CachedDensities;
+RWStructuredBuffer<float3> PredictedPosition;
+
+float3 CalcPosition (LavaPoint Point) {
+    return Point.Position+Point.Velocity*TimePassed;
+}
+
+float SmoothingKernelAbleitung(float radius, float distance) {
+    //Ableitung vom Kernel um die Steigung an einem Punkt zu finden um bei CalcDensityGradientOLD
+    // Nicht in jede richtung 2 mal zu berechnen
+    if(distance > radius) {
+        return 0;
+    }
+    float scale = 12/(3.141*pow(radius,4));
+    return -(radius-distance)*scale;
+}
+float GetPressureFromDensity(int PointID) {
+    LavaPoint Point = Points[PointID];
+    float DensityDiff = CachedDensities[PointID]-TargetDensity;
+    float Pressure = DensityDiff * PressureMultiplier;
+    return Pressure;
+}
+//Average Pressure for 2 points
+float CalcSharedPressure(float DensityA, float DensityB) {
+    float a = GetPressureFromDensity(DensityA);
+    float b = GetPressureFromDensity(DensityB);
+    return(a+b)/2;
+}
+float3 CalcPressure(int PointID) {
+    LavaPoint Point = Points[PointID];
+    float3 Pressure = GetPressureFromDensity(PointID);
+    float Density = 0;
+    uint PointNumber = 10;
+    uint ThrowAway;
+    Points.GetDimensions(PointNumber,ThrowAway);
+    for(uint i = 0; i<PointNumber; i++) {
+        float Distance = length(PredictedPosition[i]-PredictedPosition[PointID]);
+        if(Distance != 0) {
+            float3 Direction = (PredictedPosition[i]-PredictedPosition[PointID])/Distance;
+            float NeighborDensity = CachedDensities[i];
+            float Slope = SmoothingKernelAbleitung(SmoothingRadius,Distance);
+            float SharedPressure = CalcSharedPressure(NeighborDensity,CachedDensities[PointID]);
+            Pressure += Direction*Slope*SharedPressure/NeighborDensity;
+        }
+    }
+    return float3(Pressure.x,Pressure.y,Pressure.z);
+}
+
+float3 CalcDensityGradient(int PointID) {
+    LavaPoint Point = Points[PointID];
+    float3 Gradiant = float3(0,0,0);
+    float Density = 0;
+    uint PointNumber = 10;
+    uint ThrowAway;
+    const float Speed = 300; // Kinda Inverse Viscosity since it makes particles to run away faster
+    Points.GetDimensions(PointNumber,ThrowAway);
+    for(uint i = 0; i<PointNumber; i++) {
+        float Distance = length(PredictedPosition[i]-PredictedPosition[PointID]);
+        if(Distance != 0) {
+            float3 Direction = (PredictedPosition[i]-PredictedPosition[PointID])/Distance;
+            float Density = CachedDensities[PointID];
+            float Slope = SmoothingKernelAbleitung(SmoothingRadius,Distance);
+            Gradiant += Direction*Speed*Slope; //For other properties Multiply by current value and divide my Density, but for density it cancles out
+        }
+    }
+    return float3(Gradiant.x,Gradiant.y,0);
+}
+
+float3 CalcVelocity (int PointID) {
+    LavaPoint Point = Points[PointID];
+    const float3 Gravity = float3(0,-9.81,0);
+    // Point.Velocity+=Gravity*TimePassed;
+    //F =a/m where m is the density because fluid
+    Point.Velocity +=CalcPressure(PointID)*TimePassed/CachedDensities[PointID];
+    return Point.Velocity;
+}
+
+LavaPoint ReColor(int PointID) {
+    LavaPoint Point = Points[PointID];
+    Point.Color =  float4(CachedDensities[PointID],0,0,0);
+    return Point;
+}
+LavaPoint HandleCollision(LavaPoint Point) {
+    const float EnergyLossOnCollision = 0.5f;
+    const float EnergyLossOnCollisionFloor = 0.7f;
+    if (Point.Position.y < 0) {
+        Point.Position.y = 0;
+        Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollisionFloor,Point.Velocity.z);
+    }
+    if (Point.Position.y > 80) {
+        Point.Position.y = 80;
+        Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollisionFloor,Point.Velocity.z);
+    }
+    if (Point.Position.x < -70) {
+        Point.Position.x = -70;
+        Point.Velocity = float3(-Point.Velocity.x*EnergyLossOnCollision,Point.Velocity.y,Point.Velocity.z);
+    }
+    if (Point.Position.x > 70) {
+        Point.Position.x = 70;
+        Point.Velocity = float3(-Point.Velocity.x*EnergyLossOnCollision,Point.Velocity.y,Point.Velocity.z);
+    }
+    return Point;
+}
+
+[numthreads(10,1,1)]
+void CSMain (uint3 id : SV_DispatchThreadID) {
+    LavaPoint CurPoint = Points[id.x];
+    CurPoint = ReColor(id.x);
+    CurPoint.Velocity = CalcVelocity(id.x);
+    CurPoint.Position = CalcPosition(CurPoint);
+    Points[id.x] = HandleCollision(CurPoint);
+}
+*/

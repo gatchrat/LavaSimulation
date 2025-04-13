@@ -406,6 +406,8 @@ MonoBehaviour:
   ComputeShader: {fileID: 7200000, guid: a0918190062028b42a0064d66981cdf2, type: 3}
   DensityCacher: {fileID: 7200000, guid: b1b760cecdf943a44a552b958c40de0e, type: 3}
   Count: 40
+  TargetDensity: 10
+  PressureMultiplier: 1
   SmoothingRadius: 5
   Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
 --- !u!1 &1160943898
@@ -656,7 +658,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   clearColorMode: 1
-  backgroundColorHDR: {r: 0.28223762, g: 0.07075472, b: 0.2830189, a: 1}
+  backgroundColorHDR: {r: 1, g: 1, b: 1, a: 1}
   clearDepth: 1
   volumeLayerMask:
     serializedVersion: 2
