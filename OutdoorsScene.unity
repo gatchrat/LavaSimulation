@@ -437,8 +437,8 @@ MonoBehaviour:
     m_NumColorKeys: 3
     m_NumAlphaKeys: 2
   Count: 40
-  TargetDensity: 3
-  PressureMultiplier: 500
+  TargetDensity: 55
+  PressureMultiplier: 1000
   SmoothingRadius: 0.35
   Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
   RandomSpawns: 0
