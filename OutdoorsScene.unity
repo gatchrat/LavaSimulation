@@ -407,7 +407,7 @@ MonoBehaviour:
   DensityCacher: {fileID: 7200000, guid: b1b760cecdf943a44a552b958c40de0e, type: 3}
   Count: 40
   SmoothingRadius: 5
-  Material: {fileID: 2100000, guid: 0d23efb42eaa4ee43ab0d0c6c1868940, type: 2}
+  Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
 --- !u!1 &1160943898
 GameObject:
   m_ObjectHideFlags: 0

@@ -47,14 +47,6 @@ public class Test1 : MonoBehaviour
     private void RenderLava()
     {
         Debug.Log(Points[0].Velocity);
-        /*for (int i = 0; i < Objects.Length; i++)
-        {
-            Objects[i].transform.position = Points[i].Position;
-            //  SmoothRadio[i].transform.position = Points[i].Position;
-
-            Color Color = Points[i].Color * 10;
-            Objects[i].GetComponent<MeshRenderer>().material.SetColor("_UnlitColor", Color);
-        }*/
         // Render in batches of 1023 (Unity limitation)
         matrices.Clear();
         colors.Clear();
@@ -67,34 +59,13 @@ public class Test1 : MonoBehaviour
         {
             int count = Mathf.Min(1023, matrices.Count - i);
             props.Clear();
-            props.SetVectorArray("_UnlitColor", colors.GetRange(i, count));
-            Debug.Log("Frame");
-            Debug.Log(colors.GetRange(i, count)[0]);
-            Debug.Log(colors.GetRange(i, count)[1]);
-            Debug.Log(colors.GetRange(i, count)[2]);
+            props.SetVectorArray("_Color", colors.GetRange(i, count));
             Graphics.DrawMeshInstanced(Mesh, 0, Material, matrices.GetRange(i, count), props);
         }
     }
 
     private void InitLava(int x, int y)
     {
-        /*GameObject Cube = new GameObject("Cube " + x * Count + y, typeof(MeshFilter), typeof(MeshRenderer));
-        Cube.GetComponent<MeshFilter>().mesh = Mesh;
-        Cube.GetComponent<MeshRenderer>().material = new Material(Material);
-        Cube.transform.position = new Vector3(Random.Range(-70, 70), Random.Range(0, 80), 0);
-*/
-        /* GameObject RadiusObject = new GameObject("Radius " + x * Count + y, typeof(MeshFilter), typeof(MeshRenderer));
-         RadiusObject.GetComponent<MeshFilter>().mesh = Mesh;
-         RadiusObject.GetComponent<MeshRenderer>().material = new Material(Material);
-         RadiusObject.transform.position = new Vector3(Random.Range(-70, 70), Random.Range(0, 80), 0);
-         RadiusObject.transform.localScale = new Vector3(SmoothingRadius * 2, SmoothingRadius * 2, 0.1f);*/
-        /*
-                Color Color = Color.white;
-                Cube.GetComponent<MeshRenderer>().material.SetColor("_UnlitColor", Color);
-                //  RadiusObject.GetComponent<MeshRenderer>().material.SetColor("_BaseColor", Color);
-
-                Objects[x * Count + y] = Cube;*/
-        //SmoothRadio[x * Count + y] = RadiusObject;
 
         LavaPoint Point = new LavaPoint
         {
