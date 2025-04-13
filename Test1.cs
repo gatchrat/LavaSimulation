@@ -39,7 +39,9 @@ public class Test1 : MonoBehaviour
             }
         }
         props = new MaterialPropertyBlock();
-        Mesh = GameObject.CreatePrimitive(PrimitiveType.Sphere).GetComponent<MeshFilter>().sharedMesh;
+        GameObject HolySphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        Mesh = HolySphere.GetComponent<MeshFilter>().sharedMesh;
+        HolySphere.SetActive(false);
     }
     void Update()
     {
