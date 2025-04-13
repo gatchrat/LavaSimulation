@@ -22,6 +22,7 @@ public class Test1 : MonoBehaviour
     private Mesh Mesh;
     public Material Material;
     public Boolean RandomSpawns = false;
+    public float Viscosity = 1f;
     private LavaPoint[] Points;
     private MaterialPropertyBlock props;
     private List<Matrix4x4> matrices = new List<Matrix4x4>();
@@ -118,6 +119,7 @@ public class Test1 : MonoBehaviour
         ComputeShader.SetBuffer(0, "CachedDensities", DensityBuffer);
         ComputeShader.SetBuffer(0, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(0, "Points", LavaBuffer);
+        ComputeShader.SetFloat("ViscosityMultiplier", Viscosity);
         ComputeShader.SetFloat("TimePassed", Time.deltaTime);
         ComputeShader.SetFloat("TargetDensity", TargetDensity);
         ComputeShader.SetFloat("PressureMultiplier", PressureMultiplier);

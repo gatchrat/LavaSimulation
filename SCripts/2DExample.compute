@@ -10,6 +10,7 @@ struct LavaPoint {
 float TimePassed;
 float TargetDensity; // How thick is the Liquid
 float PressureMultiplier; //How Fast should we reach the target state
+float ViscosityMultiplier;
 RWStructuredBuffer<LavaPoint> Points;
 RWStructuredBuffer<float> CachedDensities;
 RWStructuredBuffer<float3> PredictedPosition;
@@ -53,12 +54,41 @@ float3 CalcPressureForce(int PointID) {
     return float3(DirectionalPressure.x,DirectionalPressure.y,0)/Density;
 }
 
+//Particles closeby slow me down or speed me up, kinda like friction. Known as Viscosity.
+float3 CalcViscosityForce(int PointID) {
+    LavaPoint Point = Points[PointID];
+
+    float Density = CachedDensities[PointID];
+    float3 ViscosityForce = 0;
+    float sqrRadius = SmoothingRadius * SmoothingRadius;
+    uint PointNumber = 10;
+    uint ThrowAway;
+    Points.GetDimensions(PointNumber,ThrowAway);
+    for(uint i = 0; i<PointNumber; i++) {
+        if(i == PointID) continue;
+        float3 Direction = PredictedPosition[i]-PredictedPosition[PointID];
+        float sqrDstToNeighbour = dot(Direction,Direction);
+        float Distance = sqrt(sqrDstToNeighbour);
+
+        if (sqrDstToNeighbour > sqrRadius) continue;
+
+        float3 NeighborVelocity = Points[i].Velocity;
+        float Influence = SmoothingKernelPoly6(Distance,SmoothingRadius);
+        ViscosityForce += (NeighborVelocity-Point.Velocity)*Influence;
+    }
+    return float3(ViscosityForce.x,ViscosityForce.y,0)*ViscosityMultiplier;
+}
+//TODO: Add Near Pressure to prevent:
+//Density Target pulls things together -> Lava Clump gets "ripped" into smaller clumps because the big one wasnt quite dense enough
+//Idea: Push close particles always a little apart to disincentivise clumping on small scales?
+//INFO: Increase the force multiplier makes the simulation more accurate, but requires more fps to not break down due to too big time steps
 float3 CalcVelocity (int PointID) {
     LavaPoint Point = Points[PointID];
     const float3 Gravity = float3(0,-9.81,0);
     Point.Velocity+=Gravity*TimePassed;
     //F =a/m where m is the density because fluid
     Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
+    Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
     return Point.Velocity;
 }
 

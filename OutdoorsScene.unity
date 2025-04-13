@@ -438,10 +438,11 @@ MonoBehaviour:
     m_NumAlphaKeys: 2
   Count: 40
   TargetDensity: 55
-  PressureMultiplier: 1000
+  PressureMultiplier: 100
   SmoothingRadius: 0.35
   Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
   RandomSpawns: 0
+  Viscosity: 1
 --- !u!1 &1160943898
 GameObject:
   m_ObjectHideFlags: 0
