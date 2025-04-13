@@ -25,7 +25,10 @@ float CalcDensity(int PointID) {
     uint ThrowAway;
     Points.GetDimensions(PointNumber,ThrowAway);
     for(uint i = 0; i<PointNumber; i++) {
-        float Distance = length(PredictedPosition[PointID]-PredictedPosition[i]);
+        if(PointNumber == PointID) {
+            continue;
+        }
+        float Distance = abs(length(PredictedPosition[i]-PredictedPosition[PointID]));
         Density+=SmoothingKernel(SmoothingRadius,Distance);
     }
     return Density;

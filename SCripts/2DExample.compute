@@ -24,6 +24,11 @@ float GetPressureFromDensity(int PointID) {
     float Pressure = DensityDiff * PressureMultiplier;
     return Pressure;
 }
+float CalcSharedPressure(float DensityA, float DensityB) {
+    float a = GetPressureFromDensity(DensityA);
+    float b = GetPressureFromDensity(DensityB);
+    return(a+b)/2;
+}
 float SmoothingKernelAbleitung(float radius, float distance) {
     //Ableitung vom Kernel um die Steigung an einem Punkt zu finden um bei CalcDensityGradientOLD
     // Nicht in jede richtung 2 mal zu berechnen
@@ -42,12 +47,13 @@ float3 CalcPressureForce(int PointID) {
     uint ThrowAway;
     Points.GetDimensions(PointNumber,ThrowAway);
     for(uint i = 0; i<PointNumber; i++) {
-        float Distance = length(PredictedPosition[i]-PredictedPosition[PointID]);
+        float Distance = abs(length(PredictedPosition[i]-PredictedPosition[PointID]));
         if(Distance != 0) {
             float3 Direction = (PredictedPosition[i]-PredictedPosition[PointID])/Distance;
             float Density = CachedDensities[i];
             float Slope = SmoothingKernelAbleitung(SmoothingRadius,Distance);
-            Pressure += GetPressureFromDensity(Density)*Direction*Slope/Density;
+            float SharedPressure = CalcSharedPressure(Density,CachedDensities[PointID]);
+            Pressure += SharedPressure*Direction*Slope/Density;
         }
     }
     return float3(Pressure.x,Pressure.y,0);
@@ -58,7 +64,7 @@ float3 CalcVelocity (int PointID) {
     const float3 Gravity = float3(0,-9.81,0);
     // Point.Velocity+=Gravity*TimePassed;
     //F =a/m where m is the density because fluid
-    Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
+    Point.Velocity =CalcPressureForce(PointID)*TimePassed;
     return Point.Velocity;
 }
 
