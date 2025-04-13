@@ -18,7 +18,12 @@ RWStructuredBuffer<float3> PredictedPosition;
 float3 CalcPosition (LavaPoint Point) {
     return Point.Position+Point.Velocity*TimePassed;
 }
-
+float GetPressureFromDensity(int PointID) {
+    LavaPoint Point = Points[PointID];
+    float DensityDiff = CachedDensities[PointID]-TargetDensity;
+    float Pressure = DensityDiff * PressureMultiplier;
+    return Pressure;
+}
 float SmoothingKernelAbleitung(float radius, float distance) {
     //Ableitung vom Kernel um die Steigung an einem Punkt zu finden um bei CalcDensityGradientOLD
     // Nicht in jede richtung 2 mal zu berechnen
@@ -29,32 +34,31 @@ float SmoothingKernelAbleitung(float radius, float distance) {
     return -(radius-distance)*scale;
 }
 
-float3 CalcDensityGradient(int PointID) {
+float3 CalcPressureForce(int PointID) {
     LavaPoint Point = Points[PointID];
-    float3 Gradiant = float3(0,0,0);
+    float3 Pressure = float3(0,0,0);
     float Density = 0;
     uint PointNumber = 10;
     uint ThrowAway;
-    const float Speed = 300; // Kinda Inverse Viscosity since it makes particles to run away faster
     Points.GetDimensions(PointNumber,ThrowAway);
     for(uint i = 0; i<PointNumber; i++) {
         float Distance = length(PredictedPosition[i]-PredictedPosition[PointID]);
         if(Distance != 0) {
             float3 Direction = (PredictedPosition[i]-PredictedPosition[PointID])/Distance;
-            float Density = CachedDensities[PointID];
+            float Density = CachedDensities[i];
             float Slope = SmoothingKernelAbleitung(SmoothingRadius,Distance);
-            Gradiant += Direction*Speed*Slope; //For other properties Multiply by current value and divide my Density, but for density it cancles out
+            Pressure += GetPressureFromDensity(Density)*Direction*Slope/Density;
         }
     }
-    return float3(Gradiant.x,Gradiant.y,0);
+    return float3(Pressure.x,Pressure.y,0);
 }
 
 float3 CalcVelocity (int PointID) {
     LavaPoint Point = Points[PointID];
     const float3 Gravity = float3(0,-9.81,0);
-    Point.Velocity+=Gravity*TimePassed;
+    // Point.Velocity+=Gravity*TimePassed;
     //F =a/m where m is the density because fluid
-    Point.Velocity +=CalcDensityGradient(PointID)*TimePassed;
+    Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
     return Point.Velocity;
 }
 
