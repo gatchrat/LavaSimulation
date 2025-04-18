@@ -71,7 +71,7 @@ public class SimulationSpawner3D : MonoBehaviour
     }
     private void RenderLava()
     {
-        Debug.Log(Points[0].Color);
+        //        Debug.Log(Points[0].Color);
         // Render in batches of 1023 (Unity limitation)
         matrices.Clear();
         colors.Clear();

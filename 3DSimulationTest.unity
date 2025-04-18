@@ -440,13 +440,13 @@ MonoBehaviour:
   XCount: 30
   YCount: 30
   ZCount: 10
-  BoundsWidth: 30
-  BoundsHeight: 5
-  BoundsDepth: 5
-  TargetDensity: 55
-  PressureMultiplier: 1
+  BoundsWidth: 10
+  BoundsHeight: 8
+  BoundsDepth: 8
+  TargetDensity: 20
+  PressureMultiplier: 55
   SmoothingRadius: 0.35
-  MaxSpeed: 1000
+  MaxSpeed: 10
   Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
   RandomSpawns: 0
   Viscosity: 0.001
