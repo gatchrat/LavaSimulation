@@ -187,11 +187,10 @@ public class SimulationSpawner3D : MonoBehaviour
         HashgridCalculator.SetBuffer(0, "Points", LavaBuffer);
         HashgridCalculator.SetFloat("SmoothingRadius", SmoothingRadius);
         HashgridCalculator.Dispatch(0, 1024, 1, 1);
-        //  HashgridCalculator.Dispatch(1, 1024, 1, 1);
-        //    HashgridCalculator.Dispatch(2, 1024, 1, 1);
-        //StartingIndizesBuffer.GetData(StartingIndizes);
+        HashgridCalculator.Dispatch(1, 1, 1, 1);
+        HashgridCalculator.Dispatch(2, 1024, 1, 1);
+        StartingIndizesBuffer.GetData(StartingIndizes);
         HashesBuffer.GetData(Hashes);
-        RenderLavaByHash();
         //Cachses Densities to prevent expensive recalculation over and over again
         DensityCacher.SetBuffer(0, "Points", LavaBuffer);
         DensityCacher.SetBuffer(0, "CachedDensities", DensityBuffer);

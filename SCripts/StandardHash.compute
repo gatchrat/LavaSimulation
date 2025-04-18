@@ -44,28 +44,39 @@ void CalcHashes (uint3 id : SV_DispatchThreadID) {
     Hashes[id.x] = uint2(CalcHash(CurPoint.Position),id.x);
 }
 //TODO Sources for Bitonic Sort
-[numthreads(1024,1,1)] //Needs to be NumOfPossibleHashes
-void SortHashes (uint3 id : SV_DispatchThreadID) {
-    for (uint k = 2; k <= NumOfPossibleHashes; k <<= 1) {
+#define BLOCK_SIZE 1024
+groupshared uint2 sharedHashes[BLOCK_SIZE];
+[numthreads(BLOCK_SIZE, 1, 1)]
+void SortHashes(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID) {
+    uint tid = groupThreadID.x;
+
+    // Load to shared memory
+    sharedHashes[tid] = Hashes[tid];
+    GroupMemoryBarrierWithGroupSync();
+
+    // Bitonic sort
+    for (uint k = 2; k <= BLOCK_SIZE; k <<= 1) {
         for (uint j = k >> 1; j > 0; j >>= 1) {
-            uint ixj = id.x ^ j;
+            uint ixj = tid ^ j;
 
-            if (ixj > id.x) {
-                // Ascending sort if the current bit of idx is 0
-                bool up = ((id.x & k) == 0);
+            if (ixj > tid) {
+                bool up = ((tid & k) == 0);
 
-                uint2 a = Hashes[id.x];
-                uint2 b = Hashes[ixj];
+                uint2 a = sharedHashes[tid];
+                uint2 b = sharedHashes[ixj];
 
                 if ((a.x > b.x) == up) {
-                    Hashes[id.x] = b;
-                    Hashes[ixj] = a;
+                    sharedHashes[tid] = b;
+                    sharedHashes[ixj] = a;
                 }
             }
 
             GroupMemoryBarrierWithGroupSync();
         }
     }
+
+    // Store back to global memory
+    Hashes[tid] = sharedHashes[tid];
 }
 
 [numthreads(1024, 1, 1)]
