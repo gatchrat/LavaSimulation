@@ -91,7 +91,6 @@ public class SimulationSpawner3D : MonoBehaviour
     }
     private void RenderLavaByHash()
     {
-        Debug.Log(Points[0].Color);
         // Render in batches of 1023 (Unity limitation)
         matrices.Clear();
         colors.Clear();
@@ -100,21 +99,16 @@ public class SimulationSpawner3D : MonoBehaviour
             matrices.Add(Matrix4x4.TRS(p.Position, Quaternion.identity, Vector3.one * 0.1f));
             colors.Add(Color.white);
         }
-        Debug.Log(colors.Count);
         for (int i = 0; i < Hashes.Length - 1; i++)
         {
-            Debug.Log(Hashes[i].index);
             if ((int)Hashes[i].index > 0 && (int)Hashes[i].index < colors.Count)
             {
                 Color color = colourMap.Evaluate(((float)Hashes[i].hash) / NumOfPossibleHashes);
                 colors[(int)Hashes[i].index] = color;
             }
 
-        }/*
-        for (int i = 0; i < StartingIndizes.Length; i++)
-        {
-            Debug.Log(StartingIndizes[i]);
-        }*/
+        }
+
         for (int i = 0; i < matrices.Count; i += 1023)
         {
             int count = Mathf.Min(1023, matrices.Count - i);
@@ -217,8 +211,8 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.Dispatch(0, Points.Length / 10, 1, 1);
 
         LavaBuffer.GetData(Points);
-        //RenderLava();
-        RenderLavaByHash();
+        RenderLava();
+        //RenderLavaByHash();
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
         PositionBuffer.Dispose();
