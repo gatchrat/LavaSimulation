@@ -442,9 +442,10 @@ MonoBehaviour:
   BoundsWidth: 8
   BoundsHeight: 5
   BoundsDepth: 5
-  TargetDensity: 630
+  TargetDensity: 55
   PressureMultiplier: 288
-  SmoothingRadius: 0.2
+  SmoothingRadius: 0.35
+  MaxSpeed: 1
   Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
   RandomSpawns: 1
   Viscosity: 0.001

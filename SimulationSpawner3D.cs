@@ -19,6 +19,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public float TargetDensity;
     public float PressureMultiplier;
     public float SmoothingRadius = 10f;
+    public float MaxSpeed = 1f;
     private Mesh Mesh;
     public Material Material;
     public Boolean RandomSpawns = false;
@@ -127,6 +128,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(0, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(0, "Points", LavaBuffer);
         ComputeShader.SetInt("ParticleCount", Points.Length);
+        ComputeShader.SetFloat("MaxSpeed", MaxSpeed);
         ComputeShader.SetFloat("BoundsHeight", BoundsHeight);
         ComputeShader.SetFloat("BoundsDepth", BoundsDepth);
         ComputeShader.SetFloat("BoundsWidth", BoundsWidth);
