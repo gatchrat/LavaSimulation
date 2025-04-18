@@ -1,0 +1,90 @@
+
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CalcHashes
+#pragma kernel SortHashes
+#pragma kernel CalcStartingIndizes
+
+struct LavaPoint {
+    float3 Position;
+    float3 Velocity;
+    float4 Color;
+};
+//Idea: Turn the Simulation area into grids
+//When searching for neioghbors simply look only into my and neighboring grids
+//Nutzen Spacial Hash von https://cg.informatik.uni-freiburg.de/publications/2011_CGF_dataStructuresSPH.pdf
+//Später vielleich compact spacial Hash
+//Compute Hash for Point
+//Sort Points by Hash
+//Save Starting indizes for Each Hash
+//To get neibors
+//Calc my hash and of each surrounding grid
+//Based on the start indizes go through points and calc distance
+int ParticleCount ;
+float SmoothingRadius;
+int NumOfPossibleHashes;//Needs to be power of 2
+RWStructuredBuffer<LavaPoint> Points;
+RWStructuredBuffer<uint2> Hashes; //(Hash of each Point,Index of the Point in the point List)
+RWStructuredBuffer<uint> StartingIndizes; //Starting index of each Hashvalue in the list of Sortet Points, -1 if hash is unused
+
+uint CalcHash(float3 Position) {
+    const int P1 =  73856093;
+    const int P2 =  19349663;
+    const int P3 =  83492791;
+    uint XPart = ((int)floor(Position.x/SmoothingRadius))*P1;
+    uint YPart = ((int)floor(Position.y/SmoothingRadius))*P2;
+    uint ZPart = ((int)floor(Position.z/SmoothingRadius))*P3;
+    return (XPart^YPart^ZPart)%NumOfPossibleHashes;
+}
+[numthreads(10,1,1)]
+void CalcHashes (uint3 id : SV_DispatchThreadID) {
+    if(id.x >=ParticleCount) {
+        return;
+    }
+    LavaPoint CurPoint = Points[id.x];
+    Hashes[id.x] = uint2(CalcHash(CurPoint.Position),id.x);
+}
+//TODO Sources for Bitonic Sort
+[numthreads(1024,1,1)] //Needs to be NumOfPossibleHashes
+void SortHashes (uint3 id : SV_DispatchThreadID) {
+    for (uint k = 2; k <= NumOfPossibleHashes; k <<= 1) {
+        for (uint j = k >> 1; j > 0; j >>= 1) {
+            uint ixj = id.x ^ j;
+
+            if (ixj > id.x) {
+                // Ascending sort if the current bit of idx is 0
+                bool up = ((id.x & k) == 0);
+
+                uint2 a = Hashes[id.x];
+                uint2 b = Hashes[ixj];
+
+                if ((a.x > b.x) == up) {
+                    Hashes[id.x] = b;
+                    Hashes[ixj] = a;
+                }
+            }
+
+            GroupMemoryBarrierWithGroupSync();
+        }
+    }
+}
+
+[numthreads(1024, 1, 1)]
+void CalcStartingIndizes(uint3 id : SV_DispatchThreadID) {
+    uint i = id.x;
+
+    if (i >= NumOfPossibleHashes) return;
+
+    uint currentHash = Hashes[i].x;
+
+    if (i == 0) {
+        // First entry always starts a new hash group
+        StartingIndizes[currentHash] = 0;
+    }
+    else {
+        uint prevHash = Hashes[i - 1].x;
+
+        if (currentHash != prevHash) {
+            StartingIndizes[currentHash] = i;
+        }
+    }
+}
