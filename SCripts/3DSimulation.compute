@@ -11,6 +11,9 @@ float TimePassed;
 float TargetDensity; // How thick is the Liquid
 float PressureMultiplier; //How Fast should we reach the target state
 float ViscosityMultiplier;
+float BoundsWidth;
+float BoundsHeight;
+float BoundsDepth;
 int ParticleCount ;
 RWStructuredBuffer<LavaPoint> Points;
 RWStructuredBuffer<float> CachedDensities;
@@ -107,24 +110,24 @@ LavaPoint HandleCollision(LavaPoint Point) {
         Point.Position.y = 0;
         Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollisionFloor,Point.Velocity.z);
     }
-    if (Point.Position.y > 8) {
-        Point.Position.y = 8;
+    if (Point.Position.y > BoundsHeight) {
+        Point.Position.y = BoundsHeight;
         Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollisionFloor,Point.Velocity.z);
     }
-    if (Point.Position.x < -7) {
-        Point.Position.x = -7;
+    if (Point.Position.x < -BoundsWidth/2) {
+        Point.Position.x = -BoundsWidth/2;
         Point.Velocity = float3(-Point.Velocity.x*EnergyLossOnCollision,Point.Velocity.y,Point.Velocity.z);
     }
-    if (Point.Position.x > 7) {
-        Point.Position.x = 7;
+    if (Point.Position.x > BoundsWidth/2) {
+        Point.Position.x = BoundsWidth/2;
         Point.Velocity = float3(-Point.Velocity.x*EnergyLossOnCollision,Point.Velocity.y,Point.Velocity.z);
     }
-    if (Point.Position.z < -7) {
-        Point.Position.z = -7;
+    if (Point.Position.z < -BoundsDepth/2) {
+        Point.Position.z = -BoundsDepth/2;
         Point.Velocity = float3(Point.Velocity.x,Point.Velocity.y,-Point.Velocity.z*EnergyLossOnCollision);
     }
-    if (Point.Position.z > 7) {
-        Point.Position.z = 7;
+    if (Point.Position.z > BoundsDepth/2) {
+        Point.Position.z = BoundsDepth/2;
         Point.Velocity = float3(Point.Velocity.x,Point.Velocity.y,-Point.Velocity.z*EnergyLossOnCollision);
     }
     return Point;

@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
+using UnityEditor.ShaderGraph.Internal;
 
 public class SimulationSpawner3D : MonoBehaviour
 {
@@ -12,6 +13,9 @@ public class SimulationSpawner3D : MonoBehaviour
     public int XCount;
     public int YCount;
     public int ZCount;
+    public float BoundsWidth = 14;
+    public float BoundsHeight = 8;
+    public float BoundsDepth = 14;
     public float TargetDensity;
     public float PressureMultiplier;
     public float SmoothingRadius = 10f;
@@ -81,7 +85,10 @@ public class SimulationSpawner3D : MonoBehaviour
         }
         else
         {
-            Point.Position = new Vector3(UnityEngine.Random.Range(-7, 7) * 0.1f, UnityEngine.Random.Range(0, 8) * 0.1f, UnityEngine.Random.Range(-7, 7) * 0.1f);
+            Point.Position = new Vector3(
+                UnityEngine.Random.Range(-BoundsWidth / 2, BoundsWidth / 2) * 0.1f,
+             UnityEngine.Random.Range(0, BoundsHeight) * 0.1f,
+             UnityEngine.Random.Range(-BoundsDepth / 2, BoundsDepth / 2) * 0.1f);
         }
         Points[z + y * ZCount + x * ZCount * YCount] = Point;
     }
@@ -120,6 +127,9 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(0, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(0, "Points", LavaBuffer);
         ComputeShader.SetInt("ParticleCount", Points.Length);
+        ComputeShader.SetFloat("BoundsHeight", BoundsHeight);
+        ComputeShader.SetFloat("BoundsDepth", BoundsDepth);
+        ComputeShader.SetFloat("BoundsWidth", BoundsWidth);
         ComputeShader.SetFloat("ViscosityMultiplier", Viscosity);
         ComputeShader.SetFloat("TimePassed", Time.deltaTime);
         ComputeShader.SetFloat("TargetDensity", TargetDensity);

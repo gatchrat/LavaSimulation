@@ -436,13 +436,18 @@ MonoBehaviour:
     m_ColorSpace: -1
     m_NumColorKeys: 3
     m_NumAlphaKeys: 2
-  Count: 40
-  TargetDensity: 55
-  PressureMultiplier: 100
-  SmoothingRadius: 0.35
+  XCount: 10
+  YCount: 10
+  ZCount: 10
+  BoundsWidth: 8
+  BoundsHeight: 5
+  BoundsDepth: 5
+  TargetDensity: 630
+  PressureMultiplier: 288
+  SmoothingRadius: 0.2
   Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
-  RandomSpawns: 0
-  Viscosity: 1
+  RandomSpawns: 1
+  Viscosity: 0.001
 --- !u!1 &1160943898
 GameObject:
   m_ObjectHideFlags: 0
@@ -646,7 +651,7 @@ Camera:
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 60
-  orthographic: 1
+  orthographic: 0
   orthographic size: 4
   m_Depth: -1
   m_CullingMask:
@@ -671,13 +676,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1823688464}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 4, z: -4}
+  m_LocalRotation: {x: -0, y: -0.32652745, z: -0, w: 0.94518775}
+  m_LocalPosition: {x: 12.61, y: 4, z: -11.94}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -38.116, z: 0}
 --- !u!114 &1823688468
 MonoBehaviour:
   m_ObjectHideFlags: 0
