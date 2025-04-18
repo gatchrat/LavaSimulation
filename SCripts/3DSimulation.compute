@@ -11,6 +11,7 @@ float TimePassed;
 float TargetDensity; // How thick is the Liquid
 float PressureMultiplier; //How Fast should we reach the target state
 float ViscosityMultiplier;
+int ParticleCount ;
 RWStructuredBuffer<LavaPoint> Points;
 RWStructuredBuffer<float> CachedDensities;
 RWStructuredBuffer<float3> PredictedPosition;
@@ -32,12 +33,13 @@ float3 CalcPressureForce(int PointID) {
     LavaPoint Point = Points[PointID];
 
     float Density = CachedDensities[PointID];
+    if(Density == 0) {
+        return float3(0,0,0);
+    }
     float3 DirectionalPressure = 0;
     float sqrRadius = SmoothingRadius * SmoothingRadius;
-    uint PointNumber = 10;
-    uint ThrowAway;
-    Points.GetDimensions(PointNumber,ThrowAway);
-    for(uint i = 0; i<PointNumber; i++) {
+
+    for(uint i = 0; i<ParticleCount; i++) {
         if(i == PointID) continue;
         float3 Direction = PredictedPosition[i]-PredictedPosition[PointID];
         float sqrDstToNeighbour = dot(Direction,Direction);
@@ -47,11 +49,11 @@ float3 CalcPressureForce(int PointID) {
 
         float3 AbsDirection = Distance > 0 ? Direction / Distance : float3(0, 1,0);
         float NeighborDensity = CachedDensities[i];
-        float Slope = DerivativeSpikyPow22D(Distance,SmoothingRadius);
+        float Slope = DerivativeSpikyPow23D(Distance,SmoothingRadius);
         float SharedPressure = CalcSharedPressure(Density,NeighborDensity);
         DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
     }
-    return float3(DirectionalPressure.x,DirectionalPressure.y,0)/Density;
+    return float3(DirectionalPressure.x,DirectionalPressure.y,DirectionalPressure.z)/Density;
 }
 
 //Particles closeby slow me down or speed me up, kinda like friction. Known as Viscosity.
@@ -59,12 +61,13 @@ float3 CalcViscosityForce(int PointID) {
     LavaPoint Point = Points[PointID];
 
     float Density = CachedDensities[PointID];
+    if(Density == 0) {
+        return float3(0,0,0);
+    }
     float3 ViscosityForce = 0;
     float sqrRadius = SmoothingRadius * SmoothingRadius;
-    uint PointNumber = 10;
-    uint ThrowAway;
-    Points.GetDimensions(PointNumber,ThrowAway);
-    for(uint i = 0; i<PointNumber; i++) {
+
+    for(uint i = 0; i<ParticleCount; i++) {
         if(i == PointID) continue;
         float3 Direction = PredictedPosition[i]-PredictedPosition[PointID];
         float sqrDstToNeighbour = dot(Direction,Direction);
@@ -73,10 +76,10 @@ float3 CalcViscosityForce(int PointID) {
         if (sqrDstToNeighbour > sqrRadius) continue;
 
         float3 NeighborVelocity = Points[i].Velocity;
-        float Influence = SmoothingKernelPoly62D(Distance,SmoothingRadius);
+        float Influence = SmoothingKernelPoly63D(Distance,SmoothingRadius);
         ViscosityForce += (NeighborVelocity-Point.Velocity)*Influence;
     }
-    return float3(ViscosityForce.x,ViscosityForce.y,0)*ViscosityMultiplier;
+    return float3(ViscosityForce.x,ViscosityForce.y,ViscosityForce.z)*ViscosityMultiplier;
 }
 //TODO: Add Near Pressure to prevent:
 //Density Target pulls things together -> Lava Clump gets "ripped" into smaller clumps because the big one wasnt quite dense enough
@@ -115,6 +118,14 @@ LavaPoint HandleCollision(LavaPoint Point) {
     if (Point.Position.x > 7) {
         Point.Position.x = 7;
         Point.Velocity = float3(-Point.Velocity.x*EnergyLossOnCollision,Point.Velocity.y,Point.Velocity.z);
+    }
+    if (Point.Position.z < -7) {
+        Point.Position.z = -7;
+        Point.Velocity = float3(Point.Velocity.x,Point.Velocity.y,-Point.Velocity.z*EnergyLossOnCollision);
+    }
+    if (Point.Position.z > 7) {
+        Point.Position.z = 7;
+        Point.Velocity = float3(Point.Velocity.x,Point.Velocity.y,-Point.Velocity.z*EnergyLossOnCollision);
     }
     return Point;
 }

@@ -7,7 +7,7 @@ struct LavaPoint {
     float3 Velocity;
     float4 Color;
 };
-int ParticleCount ;
+
 RWStructuredBuffer<LavaPoint> Points;
 RWStructuredBuffer<float> CachedDensities;
 RWStructuredBuffer<float3> PredictedPosition;
@@ -15,9 +15,11 @@ RWStructuredBuffer<float3> PredictedPosition;
 float CalcDensity(int PointID) {
     float Density = 0;
     float sqrRadius = SmoothingRadius * SmoothingRadius;
-
-    for(uint i = 0; i<ParticleCount; i++) {
-        if(i == PointID)  continue;
+    uint PointNumber = 10;
+    uint ThrowAway;
+    Points.GetDimensions(PointNumber,ThrowAway);
+    for(uint i = 0; i<PointNumber; i++) {
+        if(PointNumber == PointID)  continue;
 
         float3 Direction = PredictedPosition[i]-PredictedPosition[PointID];
         float sqrDstToNeighbour = dot(Direction, Direction);
@@ -25,7 +27,7 @@ float CalcDensity(int PointID) {
 
         if (sqrDstToNeighbour > sqrRadius) continue; // For some unkown reason very important not to compare distance and radius directly, breaks everything
 
-        Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
+        Density+=SpikyKernelPow22D(Distance,SmoothingRadius);
     }
     return Density;
 }
