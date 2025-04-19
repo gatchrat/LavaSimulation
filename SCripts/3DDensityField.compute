@@ -8,12 +8,15 @@ struct LavaPoint {
     float4 Color;
 };
 int ParticleCount ;
-int3 GridSize;
+int FieldWidth;
+int FieldHeight;
+int FieldDepth;
 float VoxelSize;
 RWStructuredBuffer<float3> PredictedPosition;
+RWStructuredBuffer<float> DensityValuesBuffer;
 RWTexture3D<float> DensityTexture;
 
-float CalcDensity(int3 RealPos) {
+float CalcDensity(float3 RealPos) {
     float Density = 0;
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
@@ -31,8 +34,11 @@ float CalcDensity(int3 RealPos) {
 
 [numthreads(8,8,8)]
 void CSMain (uint3 id : SV_DispatchThreadID) {
-    if (any(id >= GridSize)) return;
+    if ((id.x >= FieldWidth)) return;
+    if ((id.y >= FieldHeight)) return;
+    if ((id.z >= FieldDepth)) return;
 
-    int3 RealPos = float3((int)-(GridSize.x/2),0,(int)-(GridSize.z/2)) + id * VoxelSize;
+    float3 RealPos = float3(-FieldWidth/2,0,-FieldDepth/2)* VoxelSize + ((float3)id) * VoxelSize;
     DensityTexture[id] = CalcDensity(RealPos);
+    DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight] = CalcDensity(RealPos);
 }
