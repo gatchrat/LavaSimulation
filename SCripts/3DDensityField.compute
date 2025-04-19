@@ -1,0 +1,38 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#include "./Kernels.compute"
+struct LavaPoint {
+    float3 Position;
+    float3 Velocity;
+    float4 Color;
+};
+int ParticleCount ;
+int3 GridSize;
+float VoxelSize;
+RWStructuredBuffer<float3> PredictedPosition;
+RWTexture3D<float> DensityTexture;
+
+float CalcDensity(int3 RealPos) {
+    float Density = 0;
+    float sqrRadius = SmoothingRadius * SmoothingRadius;
+
+    for(uint i = 0; i<ParticleCount; i++) {
+        float3 Direction = PredictedPosition[i]-RealPos;
+        float sqrDstToNeighbour = dot(Direction, Direction);
+        float Distance = sqrt(sqrDstToNeighbour);
+
+        if (sqrDstToNeighbour > sqrRadius) continue; // For some unkown reason very important not to compare distance and radius directly, breaks everything
+
+        Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
+    }
+    return Density;
+}
+
+[numthreads(8,8,8)]
+void CSMain (uint3 id : SV_DispatchThreadID) {
+    if (any(id >= GridSize)) return;
+
+    int3 RealPos = float3((int)-(GridSize.x/2),0,(int)-(GridSize.z/2)) + id * VoxelSize;
+    DensityTexture[id] = CalcDensity(RealPos);
+}

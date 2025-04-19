@@ -1,10 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
-using UnityEditor.ShaderGraph.Internal;
-using Unity.Mathematics;
 using System.Runtime.InteropServices;
-using Unity.VisualScripting;
 public struct HashEntry
 {
     public uint hash;
@@ -17,6 +14,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public ComputeShader DensityCacher;
     public ComputeShader PositionPredicter;
     public ComputeShader HashgridCalculator;
+    public ComputeShader DensityFieldCalculator;
     public Gradient colourMap;
     public int XCount;
     public int YCount;
@@ -40,7 +38,16 @@ public class SimulationSpawner3D : MonoBehaviour
     private HashEntry[] Hashes;
     private int NumOfPossibleHashes;
     private uint[] StartingIndizes;
+    [Range(0.01f, 1f)]
+    public float isoLevel = 0.3f;
 
+    [Range(0.05f, 1f)]
+    public float voxelSize = 0.1f;
+
+    [Range(0.1f, 2f)]
+    public float kernelRadius = 0.3f;
+    public MeshFilter LavaMesh;
+    float[,,] densityField;
     ComputeBuffer LavaBuffer;
     void Start()
     {
@@ -117,7 +124,32 @@ public class SimulationSpawner3D : MonoBehaviour
             Graphics.DrawMeshInstanced(Mesh, 0, Material, matrices.GetRange(i, count), props);
         }
     }
+    private void RenderLavaAsMesh(ComputeBuffer positionBuffer)
+    {
+        int width = densityField.GetLength(0);
+        int height = densityField.GetLength(1);
+        int depth = densityField.GetLength(2);
+        RenderTexture densityTexture = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat);
+        densityTexture.dimension = UnityEngine.Rendering.TextureDimension.Tex3D;
+        densityTexture.volumeDepth = depth;
+        densityTexture.enableRandomWrite = true;
+        densityTexture.wrapMode = TextureWrapMode.Clamp;
+        densityTexture.filterMode = FilterMode.Bilinear;
+        densityTexture.Create();
 
+        DensityFieldCalculator.SetTexture(0, "DensityTexture", densityTexture);
+        DensityFieldCalculator.SetBuffer(0, "PredictedPosition", positionBuffer);
+        DensityFieldCalculator.SetFloat("SmoothingRadius", SmoothingRadius);
+        DensityFieldCalculator.SetInt("ParticleCount", Points.Length);
+        DensityFieldCalculator.SetInt("FieldWidth", width);
+        DensityFieldCalculator.SetInt("FieldHeight", densityField.GetLength(1));
+        DensityFieldCalculator.SetInt("FieldDepth", Points.GetLength(2));
+        DensityFieldCalculator.Dispatch(0, Points.Length / 10, 1, 1);
+
+        //Marching Cubes ab hier alles von Sebastian
+        // Run marching cubes compute shader and get back buffer containing triangle data
+
+    }
     private void InitLava(int x, int y, int z)
     {
 
@@ -137,6 +169,7 @@ public class SimulationSpawner3D : MonoBehaviour
              UnityEngine.Random.Range(-BoundsDepth / 2, BoundsDepth / 2) * 0.1f);
         }
         Points[z + y * ZCount + x * ZCount * YCount] = Point;
+        densityField = new float[(int)(BoundsWidth / voxelSize), (int)(BoundsHeight / voxelSize), (int)(BoundsDepth / voxelSize)];
     }
     private void ComputeLava()
     {
@@ -211,6 +244,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.Dispatch(0, Points.Length / 10, 1, 1);
 
         LavaBuffer.GetData(Points);
+        //        RenderLavaAsMesh(PositionBuffer);
         RenderLava();
         //RenderLavaByHash();
         LavaBuffer.Dispose();
