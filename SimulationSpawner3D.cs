@@ -41,7 +41,6 @@ public class SimulationSpawner3D : MonoBehaviour
     private HashEntry[] Hashes;
     private int NumOfPossibleHashes;
     private uint[] StartingIndizes;
-    [Range(0.01f, 1f)]
     public float isoLevel = 0.3f;
 
     [Range(0.05f, 1f)]
@@ -80,6 +79,7 @@ public class SimulationSpawner3D : MonoBehaviour
     void Update()
     {
         // ComputeLava();
+        RenderLava();
     }
     private void RenderLava()
     {
@@ -132,6 +132,11 @@ public class SimulationSpawner3D : MonoBehaviour
     private void RenderLavaAsMesh()
     {
         ComputeBuffer PositionBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 3);
+        //DEBUG ONLY
+        for (int i = 0; i < PredictedPositions.Length; i++)
+        {
+            PredictedPositions[i] = new Vector3(1, 1, 1);
+        }
         PositionBuffer.SetData(PredictedPositions);
         int width = densityField.GetLength(0);
         int height = densityField.GetLength(1);
@@ -203,42 +208,85 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeBuffer EdgeTableBuffer = new ComputeBuffer(256, sizeof(int));
         ComputeBuffer TriTableBuffer = new ComputeBuffer(256 * 16, sizeof(int));
         EdgeTableBuffer.SetData(MarchingCubesTables.edge_table);
-        TriTableBuffer.SetData(MarchingCubesTables.TriTable);
+        int[] triTable = new int[256 * 16];
+        for (int i = 0; i < 256; i++)
+        {
+            for (int j = 0; j < 16; j++)
+            {
+                triTable[i * 16 + j] = MarchingCubesTables.TriTable[i, j];
+            }
+        }
+        TriTableBuffer.SetData(triTable);
         int numVoxelsX = width - 1;
         int numVoxelsY = height - 1;
         int numVoxelsZ = depth - 1;
-        ComputeBuffer vertexBuffer = new ComputeBuffer(100000, sizeof(float) * 3, ComputeBufferType.Append);
-        ComputeBuffer triangleBuffer = new ComputeBuffer(100000, sizeof(int) * 3, ComputeBufferType.Append);
+        ComputeBuffer vertexBuffer = new ComputeBuffer(1000000, sizeof(float) * 3, ComputeBufferType.Append);
         vertexBuffer.SetCounterValue(0);
-        triangleBuffer.SetCounterValue(0);
         marchingCubesShader.SetTexture(0, "DensityTexture", densityTexture);
         marchingCubesShader.SetBuffer(0, "VertexBuffer", vertexBuffer);
-        marchingCubesShader.SetBuffer(0, "TriangleBuffer", triangleBuffer);
         marchingCubesShader.SetBuffer(0, "EdgeTable", EdgeTableBuffer);
         marchingCubesShader.SetBuffer(0, "TriTable", TriTableBuffer);
         marchingCubesShader.SetInts("GridSize", numVoxelsX, numVoxelsY, numVoxelsZ);
-        marchingCubesShader.Dispatch(0, Mathf.CeilToInt(numVoxelsX / 8.0f), Mathf.CeilToInt(numVoxelsY / 8.0f), Mathf.CeilToInt(numVoxelsZ / 8.0f));
+        marchingCubesShader.SetFloat("IsoLevel", isoLevel);
+        marchingCubesShader.SetFloats("WorldScale", 0.1f, 0.1f, 0.1f);
+        marchingCubesShader.Dispatch(0, dispatchX, dispatchY, dispatchZ);
 
 
 
 
         //Build Mesh
-        // Get vertex count
-        int[] triCountArray = new int[1];
+        int[] vertexCountArray = new int[1];
         ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
-        ComputeBuffer.CopyCount(triangleBuffer, countBuffer, 0);
-        countBuffer.GetData(triCountArray);
-        int triangleCount = triCountArray[0];
+        ComputeBuffer.CopyCount(vertexBuffer, countBuffer, 0);
+        countBuffer.GetData(vertexCountArray);
+        int vertexCount = vertexCountArray[0];
 
-        // Get the data
-        Vector3[] vertices = new Vector3[triangleCount * 3];
-        int[] triangles = new int[triangleCount * 3];
-        vertexBuffer.GetData(vertices, 0, 0, triangleCount * 3);
-        triangleBuffer.GetData(triangles, 0, 0, triangleCount * 3);
+        // Allocate arrays
+        Vector3[] vertices = new Vector3[vertexCount];
+        vertexBuffer.GetData(vertices);
+
+        // Create triangle indices - since vertices are already grouped in triplets
+        int triangleCount = vertexCount;
+        int[] triangles = new int[triangleCount];
+        for (int i = 0; i < triangleCount; i++)
+        {
+            triangles[i] = i;
+        }
+
+        // Generate triangle indices as a sequential list
+        for (int i = 0; i < vertexCount; i++)
+        {
+            triangles[i] = i;
+        }
+        min = float.MaxValue;
+        max = float.MinValue;
+
+
+
+        for (int x = 0; x < vertices.Length; x++)
+        {
+
+            min = Mathf.Min(min, vertices[x].magnitude);
+            max = Mathf.Max(max, vertices[x].magnitude);
+        }
 
         // Build mesh
         Mesh mesh = new Mesh();
         Debug.Log("Vertices:" + vertices.Length);
+        Debug.Log("MaxVerticesMagnitude:" + max);
+        Debug.Log("MinVerticesMagnitude:" + min);
+        Debug.Log("Triangules:" + triangles.Length);
+        for (int i = 0; i < vertices.Length; i += 3)
+        {
+            Debug.Log(VertMapper(vertices[i] - new Vector3(5, 0, 4)) + ',' + VertMapper(vertices[i + 1] - new Vector3(5, 0, 4)) + ',' + VertMapper(vertices[i + 2] - new Vector3(5, 0, 4)));
+
+        }
+
+
+        if (vertexCount > 65535)
+        {
+            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+        }
         mesh.vertices = vertices;
         mesh.triangles = triangles;
         mesh.RecalculateNormals();
@@ -248,6 +296,34 @@ public class SimulationSpawner3D : MonoBehaviour
         TriTableBuffer.Dispose();
         EdgeTableBuffer.Dispose();
 
+    }
+    private String VertMapper(Vector3 vert)
+    {
+        if (vert == new Vector3(0.85f, 1, 0.9f))
+        {
+            return ("Links");
+        }
+        if (vert == new Vector3(0.95f, 1, 0.9f))
+        {
+            return ("Rechts");
+        }
+        if (vert == new Vector3(0.9f, 1.05f, 0.9f))
+        {
+            return ("Oben");
+        }
+        if (vert == new Vector3(0.9f, 0.95f, 0.9f))
+        {
+            return ("Unten");
+        }
+        if (vert == new Vector3(0.9f, 1, 0.85f))
+        {
+            return ("Vorne");
+        }
+        if (vert == new Vector3(0.9f, 1, 0.95f))
+        {
+            return ("Hinten");
+        }
+        return "kp";
     }
     private void InitLava(int x, int y, int z)
     {
@@ -345,7 +421,7 @@ public class SimulationSpawner3D : MonoBehaviour
         LavaBuffer.GetData(Points);
         PositionBuffer.GetData(PredictedPositions);
         RenderLavaAsMesh();
-        //RenderLava();
+        RenderLava();
         //RenderLavaByHash();
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
