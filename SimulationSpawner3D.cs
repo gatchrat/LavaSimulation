@@ -52,8 +52,12 @@ public class SimulationSpawner3D : MonoBehaviour
     float[,,] densityField;
     ComputeBuffer LavaBuffer;
     Vector3[] PredictedPositions;
+    private float BoundsWidthAtStart;
+    private float BoundsDepthAtStart;
     void Start()
     {
+        BoundsWidthAtStart = BoundsWidth;
+        BoundsDepthAtStart = BoundsDepth;
         Points = new LavaPoint[XCount * YCount * ZCount];
         for (int x = 0; x < XCount; x++)
         {
@@ -74,12 +78,12 @@ public class SimulationSpawner3D : MonoBehaviour
         NumOfPossibleHashes = 1024;
         HashesBufferSize = Mathf.NextPowerOfTwo(Points.Length);
         Hashes = new HashEntry[HashesBufferSize];
-        ComputeLava();
+        //ComputeLava();
     }
     void Update()
     {
-        // ComputeLava();
-        RenderLava();
+        ComputeLava();
+        //RenderLava();
     }
     private void RenderLava()
     {
@@ -133,10 +137,6 @@ public class SimulationSpawner3D : MonoBehaviour
     {
         ComputeBuffer PositionBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 3);
         //DEBUG ONLY
-        for (int i = 0; i < PredictedPositions.Length; i++)
-        {
-            PredictedPositions[i] = new Vector3(1, 1, 1);
-        }
         PositionBuffer.SetData(PredictedPositions);
         int width = densityField.GetLength(0);
         int height = densityField.GetLength(1);
@@ -165,45 +165,46 @@ public class SimulationSpawner3D : MonoBehaviour
         int dispatchZ = Mathf.CeilToInt(densityTexture.volumeDepth / 8.0f);
         DensityFieldCalculator.Dispatch(0, dispatchX, dispatchY, dispatchZ);
         DensityValuesBuffer.GetData(DensityValues);
+        DensityValuesBuffer.Dispose();
         PositionBuffer.GetData(PredictedPositions);
-        float min = float.MaxValue;
-        float max = float.MinValue;
-        int numOfValues = 0;
+        /*   float min = float.MaxValue;
+           float max = float.MinValue;
+           int numOfValues = 0;
 
-        // Loop through each slice of the 3D texture
-        for (int z = 0; z < densityTexture.volumeDepth; z++)
-        {
-            for (int y = 0; y < densityTexture.height; y++)
-            {
-                for (int x = 0; x < densityTexture.width; x++)
-                {
-                    if (DensityValues[x + y * width + z * width * height] > 0)
-                    {
-                        numOfValues++;
+           // Loop through each slice of the 3D texture
+           for (int z = 0; z < densityTexture.volumeDepth; z++)
+           {
+               for (int y = 0; y < densityTexture.height; y++)
+               {
+                   for (int x = 0; x < densityTexture.width; x++)
+                   {
+                       if (DensityValues[x + y * width + z * width * height] > 0)
+                       {
+                           numOfValues++;
 
-                    }
-                    min = Mathf.Min(min, DensityValues[x + y * width + z * width * height]);
-                    max = Mathf.Max(max, DensityValues[x + y * width + z * width * height]);
-                }
-            }
-        }
-        int numOfPositions = 0;
-        foreach (var Position in PredictedPositions)
-        {
-            if (Position.magnitude > 0)
-            {
-                numOfPositions++;
-            }
-        }
+                       }
+                       min = Mathf.Min(min, DensityValues[x + y * width + z * width * height]);
+                       max = Mathf.Max(max, DensityValues[x + y * width + z * width * height]);
+                   }
+               }
+           }
+           int numOfPositions = 0;
+           foreach (var Position in PredictedPositions)
+           {
+               if (Position.magnitude > 0)
+               {
+                   numOfPositions++;
+               }
+           }
 
-        Debug.Log("Min Value: " + min);
-        Debug.Log("Max Value: " + max);
-        Debug.Log("FilledValues" + numOfValues);
-        Debug.Log("Width:" + width);
-        Debug.Log("Height:" + height);
-        Debug.Log("Depth" + depth);
-        Debug.Log("ParticleCount" + Points.Length);
-        Debug.Log("FilledPositions" + numOfPositions);
+                   Debug.Log("Min Value: " + min);
+                   Debug.Log("Max Value: " + max);
+                   Debug.Log("FilledValues" + numOfValues);
+                   Debug.Log("Width:" + width);
+                   Debug.Log("Height:" + height);
+                   Debug.Log("Depth" + depth);
+                   Debug.Log("ParticleCount" + Points.Length);
+                   Debug.Log("FilledPositions" + numOfPositions);*/
         //Marching Cubes 
         ComputeBuffer EdgeTableBuffer = new ComputeBuffer(256, sizeof(int));
         ComputeBuffer TriTableBuffer = new ComputeBuffer(256 * 16, sizeof(int));
@@ -220,59 +221,63 @@ public class SimulationSpawner3D : MonoBehaviour
         int numVoxelsX = width - 1;
         int numVoxelsY = height - 1;
         int numVoxelsZ = depth - 1;
-        ComputeBuffer vertexBuffer = new ComputeBuffer(1000000, sizeof(float) * 3, ComputeBufferType.Append);
+        ComputeBuffer vertexBuffer = new ComputeBuffer(width * height * depth * 30, sizeof(float) * 3);
+        ComputeBuffer vertexCountBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
+        uint[] initialCount = new uint[] { 0 };
+        vertexCountBuffer.SetData(initialCount);
+
         vertexBuffer.SetCounterValue(0);
+        marchingCubesShader.SetFloat("BoundsHeight", BoundsHeight);
+        marchingCubesShader.SetFloat("BoundsDepth", BoundsDepthAtStart);
+        marchingCubesShader.SetFloat("BoundsWidth", BoundsWidthAtStart);
+        marchingCubesShader.SetFloat("VoxelSize", voxelSize);
+        marchingCubesShader.SetBuffer(0, "VertexCount", vertexCountBuffer);
         marchingCubesShader.SetTexture(0, "DensityTexture", densityTexture);
         marchingCubesShader.SetBuffer(0, "VertexBuffer", vertexBuffer);
         marchingCubesShader.SetBuffer(0, "EdgeTable", EdgeTableBuffer);
         marchingCubesShader.SetBuffer(0, "TriTable", TriTableBuffer);
         marchingCubesShader.SetInts("GridSize", numVoxelsX, numVoxelsY, numVoxelsZ);
         marchingCubesShader.SetFloat("IsoLevel", isoLevel);
-        marchingCubesShader.SetFloats("WorldScale", 0.1f, 0.1f, 0.1f);
         marchingCubesShader.Dispatch(0, dispatchX, dispatchY, dispatchZ);
 
 
-
-
         //Build Mesh
-        int[] vertexCountArray = new int[1];
-        ComputeBuffer countBuffer = new ComputeBuffer(1, sizeof(int), ComputeBufferType.Raw);
-        ComputeBuffer.CopyCount(vertexBuffer, countBuffer, 0);
-        countBuffer.GetData(vertexCountArray);
-        int vertexCount = vertexCountArray[0];
-
         // Allocate arrays
+        uint[] vertexCountArray = new uint[1];
+        vertexCountBuffer.GetData(vertexCountArray);
+        vertexCountBuffer.Dispose();
+        int vertexCount = (int)vertexCountArray[0];
+
+        // Debug.Log("Total vertices generated: " + vertexCount);
+
+        // Allocate arrays for mesh creation
         Vector3[] vertices = new Vector3[vertexCount];
-        vertexBuffer.GetData(vertices);
+        int[] triangles = new int[vertexCount];
 
-        // Create triangle indices - since vertices are already grouped in triplets
-        int triangleCount = vertexCount;
-        int[] triangles = new int[triangleCount];
-        for (int i = 0; i < triangleCount; i++)
-        {
-            triangles[i] = i;
-        }
+        // Read the vertex data - only read up to the actual count
+        vertexBuffer.GetData(vertices, 0, 0, vertexCount);
+        vertexBuffer.Dispose();
 
-        // Generate triangle indices as a sequential list
+        // Generate triangle indices
         for (int i = 0; i < vertexCount; i++)
         {
             triangles[i] = i;
         }
-        min = float.MaxValue;
-        max = float.MinValue;
+        /* min = float.MaxValue;
+         max = float.MinValue;
 
 
 
-        for (int x = 0; x < vertices.Length; x++)
-        {
+         for (int x = 0; x < vertices.Length; x++)
+         {
 
-            min = Mathf.Min(min, vertices[x].magnitude);
-            max = Mathf.Max(max, vertices[x].magnitude);
-        }
+             min = Mathf.Min(min, vertices[x].magnitude);
+             max = Mathf.Max(max, vertices[x].magnitude);
+         }*/
 
         // Build mesh
         Mesh mesh = new Mesh();
-        Debug.Log("Vertices:" + vertices.Length);
+        /*Debug.Log("Vertices:" + vertices.Length);
         Debug.Log("MaxVerticesMagnitude:" + max);
         Debug.Log("MinVerticesMagnitude:" + min);
         Debug.Log("Triangules:" + triangles.Length);
@@ -282,7 +287,7 @@ public class SimulationSpawner3D : MonoBehaviour
 
         }
 
-
+*/
         if (vertexCount > 65535)
         {
             mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -292,7 +297,6 @@ public class SimulationSpawner3D : MonoBehaviour
         mesh.RecalculateNormals();
         LavaGeneratedMesh.mesh = mesh;
         PositionBuffer.Dispose();
-        countBuffer.Dispose();
         TriTableBuffer.Dispose();
         EdgeTableBuffer.Dispose();
 
@@ -426,5 +430,7 @@ public class SimulationSpawner3D : MonoBehaviour
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
         PositionBuffer.Dispose();
+        HashesBuffer.Dispose();
+        StartingIndizesBuffer.Dispose();
     }
 }

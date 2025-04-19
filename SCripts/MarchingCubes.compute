@@ -1,8 +1,8 @@
 // MarchingCubes.compute
 #pragma kernel March
 
-// Append buffer for vertices
-AppendStructuredBuffer<float3> VertexBuffer;
+RWStructuredBuffer<float3> VertexBuffer;
+RWStructuredBuffer<int> VertexCount;
 
 // 3D Density Field
 Texture3D<float> DensityTexture;
@@ -10,7 +10,10 @@ Texture3D<float> DensityTexture;
 // Grid size and threshold
 int3 GridSize;
 float IsoLevel;
-float3 WorldScale; // for scaling voxel positions
+float VoxelSize;
+float BoundsWidth;
+float BoundsHeight;
+float BoundsDepth;
 
 // Lookup tables
 StructuredBuffer<int> EdgeTable;      // 256 entries
@@ -59,7 +62,7 @@ void March(uint3 id : SV_DispatchThreadID) {
     for (int i = 0; i < 8; i++) {
         int3 offset = id + vertexOffset[i];
         cube[i] = DensityTexture.Load(int4(offset, 0));
-        pos[i] = offset * WorldScale;
+        pos[i] = offset /VoxelSize;
     }
 
     // Build cube index
@@ -101,9 +104,12 @@ void March(uint3 id : SV_DispatchThreadID) {
         int index3 = TriTable[cubeIndex * 16 + i + 2];
         if (index3 == -1) break; 
 
-        // Append the vertices in correct order for triangulation
-        VertexBuffer.Append(vertList[index1]);
-        VertexBuffer.Append(vertList[index2]);
-        VertexBuffer.Append(vertList[index3]);
+        uint baseIndex;
+        InterlockedAdd(VertexCount[0], 3, baseIndex); // Reserve space for 3 vertices
+
+        //Unity does clockwise not counterclockwise
+        VertexBuffer[baseIndex+2] = vertList[index1]+float3(-BoundsWidth/2,0,-BoundsDepth/2);
+        VertexBuffer[baseIndex + 1] = vertList[index2]+float3(-BoundsWidth/2,0,-BoundsDepth/2);
+        VertexBuffer[baseIndex] = vertList[index3]+float3(-BoundsWidth/2,0,-BoundsDepth/2);
     }
 }

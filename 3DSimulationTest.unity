@@ -440,8 +440,8 @@ MonoBehaviour:
     m_ColorSpace: -1
     m_NumColorKeys: 3
     m_NumAlphaKeys: 2
-  XCount: 30
-  YCount: 30
+  XCount: 20
+  YCount: 20
   ZCount: 10
   BoundsWidth: 10
   BoundsHeight: 8
@@ -453,8 +453,8 @@ MonoBehaviour:
   Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
   RandomSpawns: 0
   Viscosity: 0.001
-  isoLevel: 0.01
-  voxelSize: 0.1
+  isoLevel: 1
+  voxelSize: 1
   kernelRadius: 0.3
   LavaMesh: {fileID: 2017910448}
 --- !u!1 &380027629
