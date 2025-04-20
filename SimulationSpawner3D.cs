@@ -491,8 +491,8 @@ public class SimulationSpawner3D : MonoBehaviour
 
         LavaBuffer.GetData(Points);
         PositionBuffer.GetData(PredictedPositions);
-        //RenderLavaAsMesh();
-        RenderLava();
+        RenderLavaAsMesh();
+        //RenderLava();
         //RenderLavaByHash();
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();

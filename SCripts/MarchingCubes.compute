@@ -87,7 +87,7 @@ void March(uint3 id : SV_DispatchThreadID) {
         if (edgeFlags & (1 << i)) {
             int2 e = edgeVertexIndices[i];
             // Use the midpoint of the edge (between the two vertices)
-            vertList[i] = 0.5 * (pos[e.x] + pos[e.y]);
+            vertList[i] = VertexInterp(IsoLevel, pos[e.x], pos[e.y], cube[e.x], cube[e.y]);
 
             // Alternative: use just one of the edge's vertices (less ideal)
             // vertList[i] = pos[e.x];
