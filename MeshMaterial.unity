@@ -440,7 +440,7 @@ MonoBehaviour:
     m_ColorSpace: -1
     m_NumColorKeys: 3
     m_NumAlphaKeys: 2
-  Renderer: 2
+  Renderer: 1
   XCount: 20
   YCount: 20
   ZCount: 10
