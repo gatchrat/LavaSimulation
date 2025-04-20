@@ -2,12 +2,17 @@ using UnityEngine;
 using System.Collections.Generic;
 using System;
 using System.Runtime.InteropServices;
-using UnityEngine.UI;
-using Unity.Mathematics;
 public struct HashEntry
 {
     public uint hash;
     public uint index;
+}
+public enum RenderMode
+{
+    ByHash,
+    ByVelocity,
+    ByDensity,
+    AsMesh
 }
 public class SimulationSpawner3D : MonoBehaviour
 {
@@ -20,6 +25,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public ComputeShader HashgridCalculator;
     public ComputeShader DensityFieldCalculator;
     public Gradient colourMap;
+    public RenderMode Renderer;
     public int XCount;
     public int YCount;
     public int ZCount;
@@ -76,23 +82,29 @@ public class SimulationSpawner3D : MonoBehaviour
         HashesBufferSize = Mathf.NextPowerOfTwo(Points.Length);
         Debug.Log("Hashbuffersize:" + HashesBufferSize);
         Hashes = new HashEntry[HashesBufferSize];
-        // ComputeLava();
     }
     void Update()
     {
         ComputeLava();
-        //RenderLava();
     }
     private void RenderLava()
     {
-        //        Debug.Log(Points[0].Color);
         // Render in batches of 1023 (Unity limitation)
         matrices.Clear();
         colors.Clear();
         foreach (var p in Points)
         {
             matrices.Add(Matrix4x4.TRS(p.Position, Quaternion.identity, Vector3.one * 0.1f));
-            Color color = colourMap.Evaluate(p.Velocity.magnitude);
+            Color color;
+            if (Renderer == RenderMode.ByVelocity)
+            {
+                color = colourMap.Evaluate(p.Velocity.magnitude);
+            }
+            else
+            {
+                color = colourMap.Evaluate(p.Color.x / 100);
+            }
+
             colors.Add(color);
         }
         for (int i = 0; i < matrices.Count; i += 1023)
@@ -181,59 +193,7 @@ public class SimulationSpawner3D : MonoBehaviour
         DensityValuesBuffer.Dispose();
         StartingIndizesBuffer.Dispose();
         HashesBuffer.Dispose();
-        /*
 
-                float min = float.MaxValue;
-                float max = float.MinValue;
-                int numOfValues = 0;
-
-                // Loop through each slice of the 3D texture
-                for (int z = 0; z < densityTexture.volumeDepth; z++)
-                {
-                    for (int y = 0; y < densityTexture.height; y++)
-                    {
-                        for (int x = 0; x < densityTexture.width; x++)
-                        {
-                            if (DensityValues[x + y * width + z * width * height] > 0)
-                            {
-                                numOfValues++;
-
-                            }
-                            min = Mathf.Min(min, DensityValues[x + y * width + z * width * height]);
-                            max = Mathf.Max(max, DensityValues[x + y * width + z * width * height]);
-                        }
-                    }
-                }
-                int numOfPositions = 0;
-                foreach (var Position in PredictedPositions)
-                {
-                    if (Position.magnitude > 0)
-                    {
-                        numOfPositions++;
-                    }
-                }
-
-                Debug.Log("Min Value: " + min);
-                Debug.Log("Max Value: " + max);
-                Debug.Log("FilledValues" + numOfValues);
-                Debug.Log("Width:" + width);
-                Debug.Log("Height:" + height);
-                Debug.Log("Depth" + depth);
-                Debug.Log("ParticleCount" + Points.Length);
-                Debug.Log("FilledPositions" + numOfPositions);
-                Debug.Log("Hash of Particle 0 " + CalcHash(Points[0].Position + new Vector3(10, 0, 10)));
-                Debug.Log("Startindex Hash of Particle 0 " + StartingIndizes[CalcHash(Points[0].Position + new Vector3(10, 0, 10))]);
-                Debug.Log("Startindex of next Hash" + StartingIndizes[CalcHash(Points[0].Position + new Vector3(10, 0, 10)) + 1]);
-                Debug.Log("Hash of Particle 100 " + CalcHash(Points[100].Position + new Vector3(10, 0, 10)));
-                Debug.Log("Startindex Hash of Particle 100 " + StartingIndizes[CalcHash(Points[100].Position + new Vector3(10, 0, 10))]);
-
-                for (int i = 0; i < Hashes.Length; i++)
-                {
-                    if (CalcHash(Points[0].Position + new Vector3(10, 0, 10)) == Hashes[i].hash)
-                    {
-                        Debug.Log("Found hash for Particle 0 at:" + i);
-                    }
-                }*/
         //Marching Cubes 
         ComputeBuffer EdgeTableBuffer = new ComputeBuffer(256, sizeof(int));
         ComputeBuffer TriTableBuffer = new ComputeBuffer(256 * 16, sizeof(int));
@@ -269,15 +229,12 @@ public class SimulationSpawner3D : MonoBehaviour
         marchingCubesShader.SetFloat("IsoLevel", isoLevel);
         marchingCubesShader.Dispatch(0, dispatchX, dispatchY, dispatchZ);
 
-
         //Build Mesh
         // Allocate arrays
         uint[] vertexCountArray = new uint[1];
         vertexCountBuffer.GetData(vertexCountArray);
         vertexCountBuffer.Dispose();
         int vertexCount = (int)vertexCountArray[0];
-
-        // Debug.Log("Total vertices generated: " + vertexCount);
 
         // Allocate arrays for mesh creation
         Vector3[] vertices = new Vector3[vertexCount];
@@ -292,31 +249,9 @@ public class SimulationSpawner3D : MonoBehaviour
         {
             triangles[i] = i;
         }
-        /* min = float.MaxValue;
-         max = float.MinValue;
-
-
-
-         for (int x = 0; x < vertices.Length; x++)
-         {
-
-             min = Mathf.Min(min, vertices[x].magnitude);
-             max = Mathf.Max(max, vertices[x].magnitude);
-         }*/
 
         // Build mesh
         Mesh mesh = new Mesh();
-        /*Debug.Log("Vertices:" + vertices.Length);
-        Debug.Log("MaxVerticesMagnitude:" + max);
-        Debug.Log("MinVerticesMagnitude:" + min);
-        Debug.Log("Triangules:" + triangles.Length);
-        for (int i = 0; i < vertices.Length; i += 3)
-        {
-            Debug.Log(VertMapper(vertices[i] - new Vector3(5, 0, 4)) + ',' + VertMapper(vertices[i + 1] - new Vector3(5, 0, 4)) + ',' + VertMapper(vertices[i + 2] - new Vector3(5, 0, 4)));
-
-        }
-
-*/
         if (vertexCount > 65535)
         {
             mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -329,34 +264,6 @@ public class SimulationSpawner3D : MonoBehaviour
         TriTableBuffer.Dispose();
         EdgeTableBuffer.Dispose();
 
-    }
-    private String VertMapper(Vector3 vert)
-    {
-        if (vert == new Vector3(0.85f, 1, 0.9f))
-        {
-            return ("Links");
-        }
-        if (vert == new Vector3(0.95f, 1, 0.9f))
-        {
-            return ("Rechts");
-        }
-        if (vert == new Vector3(0.9f, 1.05f, 0.9f))
-        {
-            return ("Oben");
-        }
-        if (vert == new Vector3(0.9f, 0.95f, 0.9f))
-        {
-            return ("Unten");
-        }
-        if (vert == new Vector3(0.9f, 1, 0.85f))
-        {
-            return ("Vorne");
-        }
-        if (vert == new Vector3(0.9f, 1, 0.95f))
-        {
-            return ("Hinten");
-        }
-        return "kp";
     }
     private void InitLava(int x, int y, int z)
     {
@@ -491,31 +398,22 @@ public class SimulationSpawner3D : MonoBehaviour
 
         LavaBuffer.GetData(Points);
         PositionBuffer.GetData(PredictedPositions);
-        RenderLavaAsMesh();
-        //RenderLava();
-        //RenderLavaByHash();
+        if (Renderer == RenderMode.AsMesh)
+        {
+            RenderLavaAsMesh();
+        }
+        else if (Renderer == RenderMode.ByVelocity || Renderer == RenderMode.ByDensity)
+        {
+            RenderLava();
+        }
+        else if (Renderer == RenderMode.ByHash)
+        {
+            RenderLavaByHash();
+        }
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
         PositionBuffer.Dispose();
         HashesBuffer.Dispose();
         StartingIndizesBuffer.Dispose();
-    }
-    uint CalcHash(Vector3 Position)
-    {
-        const uint P1 = 73856093;
-        const uint P2 = 19349663;
-        const uint P3 = 83492791;
-
-        int xi = (int)Math.Floor(Position.x / SmoothingRadius);
-        int yi = (int)Math.Floor(Position.y / SmoothingRadius);
-        int zi = (int)Math.Floor(Position.z / SmoothingRadius);
-
-        // Multiply as signed, then cast to unsigned to match HLSL's behavior
-        uint xPart = (uint)(xi * (int)P1);
-        uint yPart = (uint)(yi * (int)P2);
-        uint zPart = (uint)(zi * (int)P3);
-
-
-        return (xPart ^ yPart ^ zPart) % (uint)NumOfPossibleHashes;
     }
 }

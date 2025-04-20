@@ -62,7 +62,7 @@ void March(uint3 id : SV_DispatchThreadID) {
     for (int i = 0; i < 8; i++) {
         int3 offset = id + vertexOffset[i];
         cube[i] = DensityTexture.Load(int4(offset, 0));
-        pos[i] = offset /VoxelSize;
+        pos[i] = offset *VoxelSize;
     }
 
     // Build cube index
