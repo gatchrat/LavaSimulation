@@ -22,9 +22,6 @@ void CalcHashes (uint3 id : SV_DispatchThreadID) {
         return;
     }
     LavaPoint CurPoint = Points[id.x];
-    const uint P1 = 73856093;
-    const uint P2 = 19349663;
-    const uint P3 = 83492791;
 
     Hashes[id.x].hash =CalcHash(CurPoint.Position+float3(10,0,10));//Move Pos to always be positive
     Hashes[id.x].index = id.x;

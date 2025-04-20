@@ -454,7 +454,7 @@ MonoBehaviour:
   RandomSpawns: 0
   Viscosity: 0.001
   isoLevel: 1
-  voxelSize: 1
+  voxelSize: 0.5
   kernelRadius: 0.3
   LavaMesh: {fileID: 2017910448}
 --- !u!1 &380027629

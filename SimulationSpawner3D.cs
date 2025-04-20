@@ -80,11 +80,11 @@ public class SimulationSpawner3D : MonoBehaviour
         HashesBufferSize = Mathf.NextPowerOfTwo(Points.Length);
         Debug.Log("Hashbuffersize:" + HashesBufferSize);
         Hashes = new HashEntry[HashesBufferSize];
-        ComputeLava();
+        // ComputeLava();
     }
     void Update()
     {
-        //ComputeLava();
+        ComputeLava();
         //RenderLava();
     }
     private void RenderLava()
@@ -168,6 +168,7 @@ public class SimulationSpawner3D : MonoBehaviour
         DensityFieldCalculator.SetBuffer(0, "Hashes", HashesBuffer);
         DensityFieldCalculator.SetBuffer(0, "StartingIndizes", StartingIndizesBuffer);
         DensityFieldCalculator.SetFloat("SmoothingRadius", SmoothingRadius);
+        DensityFieldCalculator.SetInt("NumOfPossibleHashes", NumOfPossibleHashes);
         DensityFieldCalculator.SetInt("ParticleCount", Points.Length);
         DensityFieldCalculator.SetInt("FieldWidth", width);
         DensityFieldCalculator.SetInt("FieldHeight", height);
@@ -184,59 +185,59 @@ public class SimulationSpawner3D : MonoBehaviour
         DensityValuesBuffer.Dispose();
         StartingIndizesBuffer.Dispose();
         HashesBuffer.Dispose();
+        /*
 
+                float min = float.MaxValue;
+                float max = float.MinValue;
+                int numOfValues = 0;
 
-        float min = float.MaxValue;
-        float max = float.MinValue;
-        int numOfValues = 0;
-
-        // Loop through each slice of the 3D texture
-        for (int z = 0; z < densityTexture.volumeDepth; z++)
-        {
-            for (int y = 0; y < densityTexture.height; y++)
-            {
-                for (int x = 0; x < densityTexture.width; x++)
+                // Loop through each slice of the 3D texture
+                for (int z = 0; z < densityTexture.volumeDepth; z++)
                 {
-                    if (DensityValues[x + y * width + z * width * height] > 0)
+                    for (int y = 0; y < densityTexture.height; y++)
                     {
-                        numOfValues++;
+                        for (int x = 0; x < densityTexture.width; x++)
+                        {
+                            if (DensityValues[x + y * width + z * width * height] > 0)
+                            {
+                                numOfValues++;
 
+                            }
+                            min = Mathf.Min(min, DensityValues[x + y * width + z * width * height]);
+                            max = Mathf.Max(max, DensityValues[x + y * width + z * width * height]);
+                        }
                     }
-                    min = Mathf.Min(min, DensityValues[x + y * width + z * width * height]);
-                    max = Mathf.Max(max, DensityValues[x + y * width + z * width * height]);
                 }
-            }
-        }
-        int numOfPositions = 0;
-        foreach (var Position in PredictedPositions)
-        {
-            if (Position.magnitude > 0)
-            {
-                numOfPositions++;
-            }
-        }
+                int numOfPositions = 0;
+                foreach (var Position in PredictedPositions)
+                {
+                    if (Position.magnitude > 0)
+                    {
+                        numOfPositions++;
+                    }
+                }
 
-        Debug.Log("Min Value: " + min);
-        Debug.Log("Max Value: " + max);
-        Debug.Log("FilledValues" + numOfValues);
-        Debug.Log("Width:" + width);
-        Debug.Log("Height:" + height);
-        Debug.Log("Depth" + depth);
-        Debug.Log("ParticleCount" + Points.Length);
-        Debug.Log("FilledPositions" + numOfPositions);
-        Debug.Log("Hash of Particle 0 " + CalcHash(Points[0].Position + new Vector3(10, 0, 10)));
-        Debug.Log("Startindex Hash of Particle 0 " + StartingIndizes[CalcHash(Points[0].Position + new Vector3(10, 0, 10))]);
-        Debug.Log("Startindex of next Hash" + StartingIndizes[CalcHash(Points[0].Position + new Vector3(10, 0, 10)) + 1]);
-        Debug.Log("Hash of Particle 100 " + CalcHash(Points[100].Position + new Vector3(10, 0, 10)));
-        Debug.Log("Startindex Hash of Particle 100 " + StartingIndizes[CalcHash(Points[100].Position + new Vector3(10, 0, 10))]);
+                Debug.Log("Min Value: " + min);
+                Debug.Log("Max Value: " + max);
+                Debug.Log("FilledValues" + numOfValues);
+                Debug.Log("Width:" + width);
+                Debug.Log("Height:" + height);
+                Debug.Log("Depth" + depth);
+                Debug.Log("ParticleCount" + Points.Length);
+                Debug.Log("FilledPositions" + numOfPositions);
+                Debug.Log("Hash of Particle 0 " + CalcHash(Points[0].Position + new Vector3(10, 0, 10)));
+                Debug.Log("Startindex Hash of Particle 0 " + StartingIndizes[CalcHash(Points[0].Position + new Vector3(10, 0, 10))]);
+                Debug.Log("Startindex of next Hash" + StartingIndizes[CalcHash(Points[0].Position + new Vector3(10, 0, 10)) + 1]);
+                Debug.Log("Hash of Particle 100 " + CalcHash(Points[100].Position + new Vector3(10, 0, 10)));
+                Debug.Log("Startindex Hash of Particle 100 " + StartingIndizes[CalcHash(Points[100].Position + new Vector3(10, 0, 10))]);
 
-        for (int i = 0; i < Hashes.Length; i++)
-        {
-            if (CalcHash(Points[0].Position + new Vector3(10, 0, 10)) == Hashes[i].hash)
-            {
-                Debug.Log("Found hash for Particle 0 at:" + i);
-            }
-        }
+                for (int i = 0; i < Hashes.Length; i++)
+                {
+                    if (CalcHash(Points[0].Position + new Vector3(10, 0, 10)) == Hashes[i].hash)
+                    {
+                        Debug.Log("Found hash for Particle 0 at:" + i);
+                    }
+                }*/
         //Marching Cubes 
         ComputeBuffer EdgeTableBuffer = new ComputeBuffer(256, sizeof(int));
         ComputeBuffer TriTableBuffer = new ComputeBuffer(256 * 16, sizeof(int));
@@ -489,7 +490,7 @@ public class SimulationSpawner3D : MonoBehaviour
         PositionBuffer.GetData(PredictedPositions);
         RenderLavaAsMesh();
         // RenderLava();
-        RenderLavaByHash();
+        //RenderLavaByHash();
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
         PositionBuffer.Dispose();
