@@ -4,7 +4,7 @@
 #pragma kernel SortHashes
 #pragma kernel CalcStartingIndizes
 #include "./Tools.compute"
-#define h 3
+
 //Idea: Turn the Simulation area into grids
 //When searching for neioghbors simply look only into my and neighboring grids
 //Nutzen Spacial Hash von https://cg.informatik.uni-freiburg.de/publications/2011_CGF_dataStructuresSPH.pdf
@@ -22,11 +22,16 @@ void CalcHashes (uint3 id : SV_DispatchThreadID) {
         return;
     }
     LavaPoint CurPoint = Points[id.x];
-    Hashes[id.x] = uint2(CalcHash(CurPoint.Position),id.x);
+    const uint P1 = 73856093;
+    const uint P2 = 19349663;
+    const uint P3 = 83492791;
+
+    Hashes[id.x].hash =CalcHash(CurPoint.Position+float3(10,0,10));//Move Pos to always be positive
+    Hashes[id.x].index = id.x;
 }
 //TODO Sources for Bitonic Sort 
 #define BLOCK_SIZE 1024
-groupshared uint2 sharedHashes[BLOCK_SIZE];
+groupshared HashEntry sharedHashes[BLOCK_SIZE];
 [numthreads(BLOCK_SIZE, 1, 1)]
 void SortHashes(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID) {
     uint tid = groupThreadID.x;
@@ -43,10 +48,10 @@ void SortHashes(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThread
             if (ixj > tid) {
                 bool up = ((tid & k) == 0);
 
-                uint2 a = sharedHashes[tid];
-                uint2 b = sharedHashes[ixj];
+                HashEntry a = sharedHashes[tid];
+                HashEntry b = sharedHashes[ixj];
 
-                if ((a.x > b.x) == up) {
+                if ((a.hash > b.hash) == up) {
                     sharedHashes[tid] = b;
                     sharedHashes[ixj] = a;
                 }
@@ -64,16 +69,16 @@ void SortHashes(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThread
 void CalcStartingIndizes(uint3 id : SV_DispatchThreadID) {
     uint i = id.x;
 
-    if (i >= NumOfPossibleHashes) return;
+    if (i >= HashesBufferSize) return;
 
-    uint currentHash = Hashes[i].x;
+    uint currentHash = Hashes[i].hash;
 
     if (i == 0) {
         // First entry always starts a new hash group
         StartingIndizes[currentHash] = 0;
     }
     else {
-        uint prevHash = Hashes[i - 1].x;
+        uint prevHash = Hashes[i - 1].hash;
 
         if (currentHash != prevHash) {
             StartingIndizes[currentHash] = i;

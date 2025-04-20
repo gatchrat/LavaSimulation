@@ -1,13 +1,18 @@
 float SmoothingRadius;
 int ParticleCount ;
 int NumOfPossibleHashes;//Needs to be power of 2
+int HashesBufferSize;
 struct LavaPoint {
     float3 Position;
     float3 Velocity;
     float4 Color;
 };
+struct HashEntry {
+    uint hash;  // This will be the first value in memory
+    uint index; // This will be the second value
+};
 RWStructuredBuffer<LavaPoint> Points;
-RWStructuredBuffer<uint2> Hashes; //(Hash of each Point,Index of the Point in the point List)
+RWStructuredBuffer<HashEntry> Hashes; //(Hash of each Point,Index of the Point in the point List)
 RWStructuredBuffer<uint> StartingIndizes; //Starting index of each Hashvalue in the list of Sortet Points, -1 if hash is unused
 
 float3 OffSetPosition(float3 Position, uint offsetID) {
@@ -72,13 +77,19 @@ float3 OffSetPosition(float3 Position, uint offsetID) {
     }
 }
 uint CalcHash(float3 Position) {
-    const int P1 =  73856093;
-    const int P2 =  19349663;
-    const int P3 =  83492791;
-    uint XPart = ((int)floor(Position.x/SmoothingRadius))*P1;
-    uint YPart = ((int)floor(Position.y/SmoothingRadius))*P2;
-    uint ZPart = ((int)floor(Position.z/SmoothingRadius))*P3;
-    return (XPart^YPart^ZPart)%NumOfPossibleHashes;
+    const uint P1 = 73856093;
+    const uint P2 = 19349663;
+    const uint P3 = 83492791;
+
+    int xi = (int)floor(Position.x / SmoothingRadius);
+    int yi = (int)floor(Position.y / SmoothingRadius);
+    int zi = (int)floor(Position.z / SmoothingRadius);
+
+    uint xPart = (uint)(xi * (int)P1);
+    uint yPart = (uint)(yi * (int)P2);
+    uint zPart = (uint)(zi * (int)P3);
+
+    return (xPart ^ yPart ^ zPart) % NumOfPossibleHashes;
 }
 float SmoothingKernelPoly62D(float dst, float radius) {
     if (dst < radius) {

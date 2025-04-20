@@ -15,14 +15,29 @@ float CalcDensity(float3 RealPos) {
     float Density = 0;
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
-    for(uint i = 0; i<ParticleCount; i++) {
-        float3 Direction = PredictedPosition[i]-RealPos;
-        float sqrDstToNeighbour = dot(Direction, Direction);
-        float Distance = sqrt(sqrDstToNeighbour);
+    for(int i = 0; i<27;i++) {
+        float3 CheckPos = OffSetPosition(RealPos,i);
+        uint CheckHash = CalcHash(CheckPos+float3(10,0,10));//Move Pos to always be positive
+        uint StartIndex = StartingIndizes[CheckHash];
+        if(StartIndex<0) {
+            continue;
+        }
+        while(StartIndex < ParticleCount) {
+            //Check if still checking in the right hashgroup
+            if(Hashes[StartIndex].hash != CheckHash) {
+                break;
+            }
+            if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
+                float3 Direction = PredictedPosition[Hashes[StartIndex].index]-RealPos;
+                float sqrDstToNeighbour = dot(Direction, Direction);
+                float Distance = sqrt(sqrDstToNeighbour);
 
-        if (sqrDstToNeighbour > sqrRadius) continue; // For some unkown reason very important not to compare distance and radius directly, breaks everything
+                if (sqrDstToNeighbour > sqrRadius) continue; // For some unkown reason very important not to compare distance and radius directly, breaks everything
 
-        Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
+                Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
+            }
+            StartIndex++;
+        }
     }
     return Density;
 }
