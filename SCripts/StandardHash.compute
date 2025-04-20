@@ -3,12 +3,8 @@
 #pragma kernel CalcHashes
 #pragma kernel SortHashes
 #pragma kernel CalcStartingIndizes
-
-struct LavaPoint {
-    float3 Position;
-    float3 Velocity;
-    float4 Color;
-};
+#include "./Tools.compute"
+#define h 3
 //Idea: Turn the Simulation area into grids
 //When searching for neioghbors simply look only into my and neighboring grids
 //Nutzen Spacial Hash von https://cg.informatik.uni-freiburg.de/publications/2011_CGF_dataStructuresSPH.pdf
@@ -19,22 +15,7 @@ struct LavaPoint {
 //To get neibors
 //Calc my hash and of each surrounding grid
 //Based on the start indizes go through points and calc distance
-int ParticleCount ;
-float SmoothingRadius;
-int NumOfPossibleHashes;//Needs to be power of 2
-RWStructuredBuffer<LavaPoint> Points;
-RWStructuredBuffer<uint2> Hashes; //(Hash of each Point,Index of the Point in the point List)
-RWStructuredBuffer<uint> StartingIndizes; //Starting index of each Hashvalue in the list of Sortet Points, -1 if hash is unused
 
-uint CalcHash(float3 Position) {
-    const int P1 =  73856093;
-    const int P2 =  19349663;
-    const int P3 =  83492791;
-    uint XPart = ((int)floor(Position.x/SmoothingRadius))*P1;
-    uint YPart = ((int)floor(Position.y/SmoothingRadius))*P2;
-    uint ZPart = ((int)floor(Position.z/SmoothingRadius))*P3;
-    return (XPart^YPart^ZPart)%NumOfPossibleHashes;
-}
 [numthreads(10,1,1)]
 void CalcHashes (uint3 id : SV_DispatchThreadID) {
     if(id.x >=ParticleCount) {
@@ -43,7 +24,7 @@ void CalcHashes (uint3 id : SV_DispatchThreadID) {
     LavaPoint CurPoint = Points[id.x];
     Hashes[id.x] = uint2(CalcHash(CurPoint.Position),id.x);
 }
-//TODO Sources for Bitonic Sort
+//TODO Sources for Bitonic Sort 
 #define BLOCK_SIZE 1024
 groupshared uint2 sharedHashes[BLOCK_SIZE];
 [numthreads(BLOCK_SIZE, 1, 1)]

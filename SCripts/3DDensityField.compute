@@ -1,13 +1,8 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
 
-#include "./Kernels.compute"
-struct LavaPoint {
-    float3 Position;
-    float3 Velocity;
-    float4 Color;
-};
-int ParticleCount ;
+#include "./Tools.compute"
+
 int FieldWidth;
 int FieldHeight;
 int FieldDepth;

@@ -1,11 +1,6 @@
 // Each #kernel tells which function to compile; you can have many kernels
 #pragma kernel CSMain
-#include "./Kernels.compute"
-struct LavaPoint {
-    float3 Position;
-    float3 Velocity;
-    float4 Color;
-};
+#include "./Tools.compute"
 
 float TimePassed;
 float TargetDensity; // How thick is the Liquid
@@ -14,9 +9,7 @@ float ViscosityMultiplier;
 float BoundsWidth;
 float BoundsHeight;
 float BoundsDepth;
-int ParticleCount ;
 float MaxSpeed;
-RWStructuredBuffer<LavaPoint> Points;
 RWStructuredBuffer<float> CachedDensities;
 RWStructuredBuffer<float3> PredictedPosition;
 

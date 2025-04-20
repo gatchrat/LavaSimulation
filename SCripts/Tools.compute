@@ -1,0 +1,166 @@
+float SmoothingRadius;
+int ParticleCount ;
+int NumOfPossibleHashes;//Needs to be power of 2
+struct LavaPoint {
+    float3 Position;
+    float3 Velocity;
+    float4 Color;
+};
+RWStructuredBuffer<LavaPoint> Points;
+RWStructuredBuffer<uint2> Hashes; //(Hash of each Point,Index of the Point in the point List)
+RWStructuredBuffer<uint> StartingIndizes; //Starting index of each Hashvalue in the list of Sortet Points, -1 if hash is unused
+
+float3 OffSetPosition(float3 Position, uint offsetID) {
+    //OffsetPositions for calculating the hash
+    switch(offsetID) {
+        case 0:
+        return Position; 
+        case 1:
+        return Position + float3(SmoothingRadius, 0, 0);
+        case 2:
+        return Position + float3(-SmoothingRadius, 0, 0);
+        case 3:
+        return Position + float3(0, SmoothingRadius, 0);
+        case 4:
+        return Position + float3(0, -SmoothingRadius, 0);
+        case 5:
+        return Position + float3(0, 0, SmoothingRadius);
+        case 6:
+        return Position + float3(0, 0, -SmoothingRadius);
+        case 7:
+        return Position + float3(SmoothingRadius, SmoothingRadius, 0);
+        case 8:
+        return Position + float3(SmoothingRadius, -SmoothingRadius, 0);
+        case 9:
+        return Position + float3(-SmoothingRadius, SmoothingRadius, 0);
+        case 10:
+        return Position + float3(-SmoothingRadius, -SmoothingRadius, 0);
+        case 11:
+        return Position + float3(SmoothingRadius, 0, SmoothingRadius);
+        case 12:
+        return Position + float3(SmoothingRadius, 0, -SmoothingRadius);
+        case 13:
+        return Position + float3(-SmoothingRadius, 0, SmoothingRadius);
+        case 14:
+        return Position + float3(-SmoothingRadius, 0, -SmoothingRadius);
+        case 15:
+        return Position + float3(0, SmoothingRadius, SmoothingRadius);
+        case 16:
+        return Position + float3(0, SmoothingRadius, -SmoothingRadius);
+        case 17:
+        return Position + float3(0, -SmoothingRadius, SmoothingRadius);
+        case 18:
+        return Position + float3(0, -SmoothingRadius, -SmoothingRadius);
+        case 19:
+        return Position + float3(SmoothingRadius, SmoothingRadius, SmoothingRadius);
+        case 20:
+        return Position + float3(SmoothingRadius, SmoothingRadius, -SmoothingRadius);
+        case 21:
+        return Position + float3(SmoothingRadius, -SmoothingRadius, SmoothingRadius);
+        case 22:
+        return Position + float3(SmoothingRadius, -SmoothingRadius, -SmoothingRadius);
+        case 23:
+        return Position + float3(-SmoothingRadius, SmoothingRadius, SmoothingRadius);
+        case 24:
+        return Position + float3(-SmoothingRadius, SmoothingRadius, -SmoothingRadius);
+        case 25:
+        return Position + float3(-SmoothingRadius, -SmoothingRadius, SmoothingRadius);
+        case 26:
+        return Position + float3(-SmoothingRadius, -SmoothingRadius, -SmoothingRadius);
+        default:
+        return Position;
+    }
+}
+uint CalcHash(float3 Position) {
+    const int P1 =  73856093;
+    const int P2 =  19349663;
+    const int P3 =  83492791;
+    uint XPart = ((int)floor(Position.x/SmoothingRadius))*P1;
+    uint YPart = ((int)floor(Position.y/SmoothingRadius))*P2;
+    uint ZPart = ((int)floor(Position.z/SmoothingRadius))*P3;
+    return (XPart^YPart^ZPart)%NumOfPossibleHashes;
+}
+float SmoothingKernelPoly62D(float dst, float radius) {
+    if (dst < radius) {
+        float v = radius * radius - dst * dst;
+        return v * v * v * 4 / (3.141 * pow(SmoothingRadius, 8));
+    }
+    return 0;
+}
+
+float SpikyKernelPow32D(float dst, float radius) {
+    if (dst < radius) {
+        float v = radius - dst;
+        return v * v * v * 10 / (3.141* pow(SmoothingRadius, 5));
+    }
+    return 0;
+}
+
+float SpikyKernelPow22D(float dst, float radius) {
+    if (dst < radius) {
+        float v = radius - dst;
+        return v * v * 6 / (3.141 * pow(SmoothingRadius, 4));
+    }
+    return 0;
+}
+
+float DerivativeSpikyPow32D(float dst, float radius) {
+    if (dst <= radius) {
+        float v = radius - dst;
+        return -v * v * 30 / (pow(SmoothingRadius, 5) * 3.141);
+    }
+    return 0;
+}
+
+float DerivativeSpikyPow22D(float dst, float radius) {
+    if (dst <= radius) {
+        float v = radius - dst;
+        return -v * 12 / (pow(SmoothingRadius, 4) * 3.141);
+    }
+    return 0;
+}
+
+float SmoothingKernelPoly63D(float dst, float radius) {
+    if (dst < radius) {
+        float scale = 315 / (64 *  3.141 * pow(abs(radius), 9));
+        float v = radius * radius - dst * dst;
+        return v * v * v * scale;
+    }
+    return 0;
+}
+
+float SpikyKernelPow33D(float dst, float radius) {
+    if (dst < radius) {
+        float scale = 15 / (3.141 * pow(radius, 6));
+        float v = radius - dst;
+        return v * v * v * scale;
+    }
+    return 0;
+}
+
+float SpikyKernelPow23D(float dst, float radius) {
+    if (dst < radius) {
+        float scale = 15 / (2 *  3.141 * pow(radius, 5));
+        float v = radius - dst;
+        return v * v * scale;
+    }
+    return 0;
+}
+
+float DerivativeSpikyPow33D(float dst, float radius) {
+    if (dst <= radius) {
+        float scale = 45 / (pow(radius, 6) *  3.141);
+        float v = radius - dst;
+        return -v * v * scale;
+    }
+    return 0;
+}
+
+float DerivativeSpikyPow23D(float dst, float radius) {
+    if (dst <= radius) {
+        float scale = 15 / (pow(radius, 5) *  3.141);
+        float v = radius - dst;
+        return -v * scale;
+    }
+    return 0;
+}
