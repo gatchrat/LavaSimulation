@@ -8,17 +8,34 @@ RWStructuredBuffer<float3> PredictedPosition;
 float CalcDensity(int PointID) {
     float Density = 0;
     float sqrRadius = SmoothingRadius * SmoothingRadius;
+    float3 MyPosition = PredictedPosition[PointID];
 
-    for(uint i = 0; i<ParticleCount; i++) {
-        if(i == PointID)  continue;
+    for(uint i = 0; i<27;i++) {
+        float3 CheckPos = OffSetPosition(MyPosition,i);
+        uint CheckHash = CalcHash(CheckPos+float3(10,0,10));//Move Pos to always be positive
+        uint StartIndex = StartingIndizes[CheckHash];
+        if(StartIndex== 0xFFFFFFFF) {
+            continue;
+        }
+        while(StartIndex < ParticleCount) {
+            //Check if still checking in the right hashgroup
+            if(Hashes[StartIndex].hash != CheckHash) {
+                break;
+            }
+            if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
+                uint Index = Hashes[StartIndex].index;
+                if(Index != PointID) {
+                    float3 Direction = PredictedPosition[Index]-MyPosition;
+                    float sqrDstToNeighbour = dot(Direction, Direction);
+                    float Distance = sqrt(sqrDstToNeighbour);
 
-        float3 Direction = PredictedPosition[i]-PredictedPosition[PointID];
-        float sqrDstToNeighbour = dot(Direction, Direction);
-        float Distance = sqrt(sqrDstToNeighbour);
-
-        if (sqrDstToNeighbour > sqrRadius) continue; // For some unkown reason very important not to compare distance and radius directly, breaks everything
-
-        Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
+                    if (sqrDstToNeighbour <= sqrRadius) {
+                        Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
+                    }
+                }
+            }
+            StartIndex++;
+        }
     }
     return Density;
 }

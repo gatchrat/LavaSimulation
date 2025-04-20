@@ -48,7 +48,12 @@ float3 CalcPressureForce(int PointID) {
         float NeighborDensity = CachedDensities[i];
         float Slope = DerivativeSpikyPow23D(Distance,SmoothingRadius);
         float SharedPressure = CalcSharedPressure(Density,NeighborDensity);
-        DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
+        if(NeighborDensity > 0) {
+            DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
+        }
+    }
+    if(Density == 0) {
+        return float3(0,0,0);
     }
     return float3(DirectionalPressure.x,DirectionalPressure.y,DirectionalPressure.z)/Density;
 }

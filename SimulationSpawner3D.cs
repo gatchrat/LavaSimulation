@@ -46,10 +46,6 @@ public class SimulationSpawner3D : MonoBehaviour
 
     [Range(0.05f, 1f)]
     public float voxelSize = 0.1f;
-
-    [Range(0.1f, 2f)]
-    public float kernelRadius = 0.3f;
-    public MeshFilter LavaMesh;
     float[,,] densityField;
     ComputeBuffer LavaBuffer;
     Vector3[] PredictedPositions;
@@ -72,7 +68,7 @@ public class SimulationSpawner3D : MonoBehaviour
         }
         PredictedPositions = new Vector3[Points.Length];
         props = new MaterialPropertyBlock();
-        GameObject HolySphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        GameObject HolySphere = GameObject.CreatePrimitive(PrimitiveType.Cube);
         Mesh = HolySphere.GetComponent<MeshFilter>().sharedMesh;
         HolySphere.SetActive(false);
 
@@ -464,6 +460,9 @@ public class SimulationSpawner3D : MonoBehaviour
         HashesBuffer.GetData(Hashes);
         //Cachses Densities to prevent expensive recalculation over and over again
         DensityCacher.SetBuffer(0, "Points", LavaBuffer);
+        DensityCacher.SetBuffer(0, "Hashes", HashesBuffer);
+        DensityCacher.SetBuffer(0, "StartingIndizes", StartingIndizesBuffer);
+        DensityCacher.SetInt("NumOfPossibleHashes", NumOfPossibleHashes);
         DensityCacher.SetBuffer(0, "CachedDensities", DensityBuffer);
         DensityCacher.SetBuffer(0, "PredictedPosition", PositionBuffer);
         DensityCacher.SetFloat("TimePassed", Time.deltaTime);
@@ -488,8 +487,8 @@ public class SimulationSpawner3D : MonoBehaviour
 
         LavaBuffer.GetData(Points);
         PositionBuffer.GetData(PredictedPositions);
-        RenderLavaAsMesh();
-        // RenderLava();
+        //RenderLavaAsMesh();
+        RenderLava();
         //RenderLavaByHash();
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
