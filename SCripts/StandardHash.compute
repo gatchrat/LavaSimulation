@@ -29,42 +29,36 @@ void CalcHashes (uint3 id : SV_DispatchThreadID) {
     Hashes[id.x].hash =CalcHash(CurPoint.Position+float3(10,0,10));//Move Pos to always be positive
     Hashes[id.x].index = id.x;
 }
-//TODO Sources for Bitonic Sort 
-#define BLOCK_SIZE 1024
-groupshared HashEntry sharedHashes[BLOCK_SIZE];
-[numthreads(BLOCK_SIZE, 1, 1)]
-void SortHashes(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID) {
-    uint tid = groupThreadID.x;
+//SOURCE:https://github.com/SebLague/Fluid-Sim/blob/Episode-01/Assets/Scripts/Compute%20Helpers/GPU%20Sort/Resources/BitonicMergeSort.compute
+const uint numEntries;
+const uint groupWidth;
+const uint groupHeight;
+const uint stepIndex;
 
-    // Load to shared memory
-    sharedHashes[tid] = Hashes[tid];
-    GroupMemoryBarrierWithGroupSync();
+// Sort the given entries by their keys (smallest to largest)
+// This is done using bitonic merge sort, and takes multiple iterations
+[numthreads(128, 1, 1)]
+void SortHashes (uint3 id : SV_DispatchThreadID) {
+    uint i = id.x;
 
-    // Bitonic sort
-    for (uint k = 2; k <= BLOCK_SIZE; k <<= 1) {
-        for (uint j = k >> 1; j > 0; j >>= 1) {
-            uint ixj = tid ^ j;
+    uint hIndex = i & (groupWidth - 1);
+    uint indexLeft = hIndex + (groupHeight + 1) * (i / groupWidth);
+    uint rightStepSize = stepIndex == 0 ? groupHeight - 2 * hIndex : (groupHeight + 1) / 2;
+    uint indexRight = indexLeft + rightStepSize;
 
-            if (ixj > tid) {
-                bool up = ((tid & k) == 0);
+    // Exit if out of bounds (for non-power of 2 input sizes)
+    if (indexRight >= numEntries) return;
 
-                HashEntry a = sharedHashes[tid];
-                HashEntry b = sharedHashes[ixj];
+    uint valueLeft = Hashes[indexLeft].hash;
+    uint valueRight = Hashes[indexRight].hash;
 
-                if ((a.hash > b.hash) == up) {
-                    sharedHashes[tid] = b;
-                    sharedHashes[ixj] = a;
-                }
-            }
-
-            GroupMemoryBarrierWithGroupSync();
-        }
+    // Swap entries if value is descending
+    if (valueLeft > valueRight) {
+        HashEntry temp = Hashes[indexLeft];
+        Hashes[indexLeft] = Hashes[indexRight];
+        Hashes[indexRight] = temp;
     }
-
-    // Store back to global memory
-    Hashes[tid] = sharedHashes[tid];
 }
-
 [numthreads(1024, 1, 1)]
 void CalcStartingIndizes(uint3 id : SV_DispatchThreadID) {
     uint i = id.x;

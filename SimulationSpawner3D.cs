@@ -78,6 +78,7 @@ public class SimulationSpawner3D : MonoBehaviour
 
         NumOfPossibleHashes = 1024;
         HashesBufferSize = Mathf.NextPowerOfTwo(Points.Length);
+        Debug.Log("Hashbuffersize:" + HashesBufferSize);
         Hashes = new HashEntry[HashesBufferSize];
         ComputeLava();
     }
@@ -428,7 +429,35 @@ public class SimulationSpawner3D : MonoBehaviour
         HashgridCalculator.SetBuffer(0, "Points", LavaBuffer);
         HashgridCalculator.SetFloat("SmoothingRadius", SmoothingRadius);
         HashgridCalculator.Dispatch(0, 1024, 1, 1);
-        HashgridCalculator.Dispatch(1, 1, 1, 1);
+
+
+        //https://github.com/SebLague/Fluid-Sim/blob/Episode-01/Assets/Scripts/Compute%20Helpers/GPU%20Sort/GPUSort.cs
+        HashgridCalculator.SetInt("numEntries", Hashes.Length);
+        // Launch each step of the sorting algorithm (once the previous step is complete)
+        // Number of steps = [log2(n) * (log2(n) + 1)] / 2
+        // where n = nearest power of 2 that is greater or equal to the number of inputs
+        int numStages = (int)Math.Log(Hashes.Length, 2);
+
+        for (int stageIndex = 0; stageIndex < numStages; stageIndex++)
+        {
+            for (int stepIndex = 0; stepIndex < stageIndex + 1; stepIndex++)
+            {
+                // Calculate some pattern stuff
+                int groupWidth = 1 << (stageIndex - stepIndex);
+                int groupHeight = 2 * groupWidth - 1;
+                HashgridCalculator.SetInt("groupWidth", groupWidth);
+                HashgridCalculator.SetInt("groupHeight", groupHeight);
+                HashgridCalculator.SetInt("stepIndex", stepIndex);
+                // Run the sorting step on the GPU
+                HashgridCalculator.Dispatch(1, Hashes.Length / 2, 1, 1);
+            }
+        }
+        //----------------------------------------------------------------------------------
+
+
+
+
+
         HashgridCalculator.Dispatch(2, 1024, 1, 1);
         StartingIndizesBuffer.GetData(StartingIndizes);
         HashesBuffer.GetData(Hashes);
