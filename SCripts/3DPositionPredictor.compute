@@ -15,7 +15,7 @@ float3 PredictPosition(int PointID) {
     float3 PredictedPosition = CurPoint.Position + (CurPoint.Velocity+float3(0,-9.81,0))/120;
     return PredictedPosition;
 }
-[numthreads(10,1,1)]
+[numthreads(1024,1,1)]
 void CSMain (uint3 id : SV_DispatchThreadID) {
     PredictedPosition[id.x] = PredictPosition(id.x);
 }

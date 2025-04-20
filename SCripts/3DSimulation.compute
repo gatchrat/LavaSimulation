@@ -53,6 +53,7 @@ float3 CalcPressureForce(int PointID) {
             if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
                 uint Index = Hashes[StartIndex].index;
                 if(Index != PointID) {
+                    //-----------------------------------
                     float3 Direction = PredictedPosition[Index]-MyPosition;
                     float sqrDstToNeighbour = dot(Direction,Direction);
                     float Distance = sqrt(sqrDstToNeighbour);
@@ -66,6 +67,7 @@ float3 CalcPressureForce(int PointID) {
                             DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
                         }
                     }
+                    //-----------------------------------
                 }
             }
             StartIndex++;
@@ -102,6 +104,7 @@ float3 CalcViscosityForce(int PointID) {
             if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
                 uint Index = Hashes[StartIndex].index;
                 if(Index != PointID) {
+                    //-----------------------------------
                     float3 Direction = PredictedPosition[Index]-MyPosition;
                     float sqrDstToNeighbour = dot(Direction,Direction);
                     float Distance = sqrt(sqrDstToNeighbour);
@@ -111,6 +114,7 @@ float3 CalcViscosityForce(int PointID) {
                         float Influence = SmoothingKernelPoly63D(Distance,SmoothingRadius);
                         ViscosityForce += (NeighborVelocity-Point.Velocity)*Influence;
                     }
+                    //-----------------------------------
                 }
             }
             StartIndex++;

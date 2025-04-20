@@ -25,6 +25,7 @@ float CalcDensity(int PointID) {
             if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
                 uint Index = Hashes[StartIndex].index;
                 if(Index != PointID) {
+                    //-----------------------------------
                     float3 Direction = PredictedPosition[Index]-MyPosition;
                     float sqrDstToNeighbour = dot(Direction, Direction);
                     float Distance = sqrt(sqrDstToNeighbour);
@@ -32,6 +33,7 @@ float CalcDensity(int PointID) {
                     if (sqrDstToNeighbour <= sqrRadius) {
                         Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
                     }
+                    //-----------------------------------
                 }
             }
             StartIndex++;

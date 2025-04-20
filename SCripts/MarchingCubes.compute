@@ -76,21 +76,11 @@ void March(uint3 id : SV_DispatchThreadID) {
 
     float3 vertList[12];
 
-    // Find intersection vertices on edges
-    /*for (i = 0; i < 12; i++) {
-        if (edgeFlags & (1 << i)) {
-            int2 e = edgeVertexIndices[i];
-            vertList[i] = VertexInterp(IsoLevel, pos[e.x], pos[e.y], cube[e.x], cube[e.y]);
-        }
-    }*/
     for (i = 0; i < 12; i++) {
         if (edgeFlags & (1 << i)) {
             int2 e = edgeVertexIndices[i];
             // Use the midpoint of the edge (between the two vertices)
             vertList[i] = VertexInterp(IsoLevel, pos[e.x], pos[e.y], cube[e.x], cube[e.y]);
-
-            // Alternative: use just one of the edge's vertices (less ideal)
-            // vertList[i] = pos[e.x];
         }
     }
 

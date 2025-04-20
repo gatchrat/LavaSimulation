@@ -27,6 +27,7 @@ void CalcHashes (uint3 id : SV_DispatchThreadID) {
     Hashes[id.x].index = id.x;
 }
 //SOURCE:https://github.com/SebLague/Fluid-Sim/blob/Episode-01/Assets/Scripts/Compute%20Helpers/GPU%20Sort/Resources/BitonicMergeSort.compute
+//------------------------------------------------------------------------------------------------------------------------------------------
 const uint numEntries;
 const uint groupWidth;
 const uint groupHeight;
@@ -56,6 +57,7 @@ void SortHashes (uint3 id : SV_DispatchThreadID) {
         Hashes[indexRight] = temp;
     }
 }
+//------------------------------------------------------------------------------------------------------------------------------------------
 [numthreads(1024, 1, 1)]
 void CalcStartingIndizes(uint3 id : SV_DispatchThreadID) {
     uint i = id.x;

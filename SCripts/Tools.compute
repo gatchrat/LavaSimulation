@@ -8,8 +8,8 @@ struct LavaPoint {
     float4 Color;
 };
 struct HashEntry {
-    uint hash;  // This will be the first value in memory
-    uint index; // This will be the second value
+    uint hash;  
+    uint index;
 };
 RWStructuredBuffer<LavaPoint> Points;
 RWStructuredBuffer<HashEntry> Hashes; //(Hash of each Point,Index of the Point in the point List)
@@ -76,6 +76,7 @@ float3 OffSetPosition(float3 Position, uint offsetID) {
         return Position;
     }
 }
+
 uint CalcHash(float3 Position) {
     const uint P1 = 73856093;
     const uint P2 = 19349663;
@@ -91,6 +92,8 @@ uint CalcHash(float3 Position) {
 
     return (xPart ^ yPart ^ zPart) % NumOfPossibleHashes;
 }
+//SOURCE https://github.com/SebLague/Fluid-Sim/blob/Episode-01/Assets/Scripts/Sim%203D/Compute/FluidMaths3D.hlsl
+//------------------------------------------------------------------------------------------------------------------------------------------
 float SmoothingKernelPoly62D(float dst, float radius) {
     if (dst < radius) {
         float v = radius * radius - dst * dst;
@@ -175,3 +178,4 @@ float DerivativeSpikyPow23D(float dst, float radius) {
     }
     return 0;
 }
+//------------------------------------------------------------------------------------------------------------------------------------------

@@ -28,6 +28,7 @@ float CalcDensity(float3 RealPos) {
                 break;
             }
             if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
+                //-----------------------------------
                 float3 Direction = PredictedPosition[Hashes[StartIndex].index]-RealPos;
                 float sqrDstToNeighbour = dot(Direction, Direction);
                 float Distance = sqrt(sqrDstToNeighbour);
@@ -35,6 +36,7 @@ float CalcDensity(float3 RealPos) {
                 if (sqrDstToNeighbour < sqrRadius) {
                     Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
                 }
+                //-----------------------------------
             }
             StartIndex++;
         }
