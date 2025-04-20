@@ -41,7 +41,27 @@ float CalcDensity(float3 RealPos) {
     }
     return Density;
 }
-
+bool isBorder(uint3 id) {
+    if(id.x == 0) {
+        return true;
+    }
+    if(id.x >= FieldWidth-1) {
+        return true;
+    }
+    if(id.y == 0) {
+        return true;
+    }
+    if(id.y >= FieldHeight-1) {
+        return true;
+    }
+    if(id.z == 0) {
+        return true;
+    }
+    if(id.z >= FieldDepth-1) {
+        return true;
+    }
+    return false;
+}
 [numthreads(8,8,8)]
 void CSMain (uint3 id : SV_DispatchThreadID) {
     if ((id.x >= FieldWidth)) return;
@@ -49,6 +69,12 @@ void CSMain (uint3 id : SV_DispatchThreadID) {
     if ((id.z >= FieldDepth)) return;
 
     float3 RealPos = float3(-FieldWidth/2,0,-FieldDepth/2)* VoxelSize + ((float3)id) * VoxelSize;
-    DensityTexture[id] = CalcDensity(RealPos);
-    DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight] = CalcDensity(RealPos);
+
+    if(isBorder(id)) {
+        DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight] = 0;
+        DensityTexture[id] =  0;
+    }else {
+        DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight] = CalcDensity(RealPos);
+        DensityTexture[id] = DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight];
+    }
 }
