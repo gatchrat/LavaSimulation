@@ -36,20 +36,39 @@ float3 CalcPressureForce(int PointID) {
     float3 DirectionalPressure = 0;
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
-    for(uint i = 0; i<ParticleCount; i++) {
-        if(i == PointID) continue;
-        float3 Direction = PredictedPosition[i]-PredictedPosition[PointID];
-        float sqrDstToNeighbour = dot(Direction,Direction);
-        float Distance = sqrt(sqrDstToNeighbour);
+    float3 MyPosition = PredictedPosition[PointID];
 
-        if (sqrDstToNeighbour > sqrRadius) continue;
+    for(uint i = 0; i<27;i++) {
+        float3 CheckPos = OffSetPosition(MyPosition,i);
+        uint CheckHash = CalcHash(CheckPos+float3(10,0,10));//Move Pos to always be positive
+        uint StartIndex = StartingIndizes[CheckHash];
+        if(StartIndex== 0xFFFFFFFF) {
+            continue;
+        }
+        while(StartIndex < ParticleCount) {
+            //Check if still checking in the right hashgroup
+            if(Hashes[StartIndex].hash != CheckHash) {
+                break;
+            }
+            if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
+                uint Index = Hashes[StartIndex].index;
+                if(Index != PointID) {
+                    float3 Direction = PredictedPosition[Index]-MyPosition;
+                    float sqrDstToNeighbour = dot(Direction,Direction);
+                    float Distance = sqrt(sqrDstToNeighbour);
 
-        float3 AbsDirection = Distance > 0 ? Direction / Distance : float3(0, 1,0);
-        float NeighborDensity = CachedDensities[i];
-        float Slope = DerivativeSpikyPow23D(Distance,SmoothingRadius);
-        float SharedPressure = CalcSharedPressure(Density,NeighborDensity);
-        if(NeighborDensity > 0) {
-            DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
+                    if (sqrDstToNeighbour <= sqrRadius) {
+                        float3 AbsDirection = Distance > 0 ? Direction / Distance : float3(0, 1,0);
+                        float NeighborDensity = CachedDensities[Index];
+                        float Slope = DerivativeSpikyPow23D(Distance,SmoothingRadius);
+                        float SharedPressure = CalcSharedPressure(Density,NeighborDensity);
+                        if(NeighborDensity > 0) {
+                            DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
+                        }
+                    }
+                }
+            }
+            StartIndex++;
         }
     }
     if(Density == 0) {

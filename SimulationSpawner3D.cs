@@ -470,6 +470,10 @@ public class SimulationSpawner3D : MonoBehaviour
         DensityCacher.SetInt("ParticleCount", Points.Length);
         DensityCacher.Dispatch(0, Points.Length / 10, 1, 1);
 
+
+        ComputeShader.SetBuffer(0, "Hashes", HashesBuffer);
+        ComputeShader.SetBuffer(0, "StartingIndizes", StartingIndizesBuffer);
+        ComputeShader.SetInt("NumOfPossibleHashes", NumOfPossibleHashes);
         ComputeShader.SetBuffer(0, "CachedDensities", DensityBuffer);
         ComputeShader.SetBuffer(0, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(0, "Points", LavaBuffer);
