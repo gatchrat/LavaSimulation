@@ -19,6 +19,7 @@ public class SimulationSpawner3D : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     public ComputeShader ComputeShader;
     public ComputeShader marchingCubesShader;
+    public ComputeShader SDFLoader;
     public MeshFilter LavaGeneratedMesh;
     public ComputeShader DensityCacher;
     public ComputeShader PositionPredicter;
@@ -57,8 +58,11 @@ public class SimulationSpawner3D : MonoBehaviour
     Vector3[] PredictedPositions;
     private float BoundsWidthAtStart;
     private float BoundsDepthAtStart;
+    private RenderTexture SDFTexture;
     void Start()
     {
+        LoadSDF();
+
         BoundsWidthAtStart = BoundsWidth;
         BoundsDepthAtStart = BoundsDepth;
 
@@ -198,6 +202,8 @@ public class SimulationSpawner3D : MonoBehaviour
         DensityCacher.Dispatch(0, Points.Length / 10, 1, 1);
 
         //Calculate Forces and Movement
+        ComputeShader.SetTexture(0, "SDFTexture", SDFTexture);
+        ComputeShader.SetInts("SDFSize", 30, 30, 30);
         ComputeShader.SetBuffer(0, "Hashes", HashesBuffer);
         ComputeShader.SetBuffer(0, "StartingIndizes", StartingIndizesBuffer);
         ComputeShader.SetInt("NumOfPossibleHashes", NumOfPossibleHashes);
@@ -240,7 +246,7 @@ public class SimulationSpawner3D : MonoBehaviour
         HashesBuffer.Dispose();
         StartingIndizesBuffer.Dispose();
     }
-
+    //----------------------------------RENDERER------------------------------------------
     private void RenderLava()
     {
         // Render in batches of 1023 (Unity limitation)
@@ -297,7 +303,7 @@ public class SimulationSpawner3D : MonoBehaviour
             Graphics.DrawMeshInstanced(Mesh, 0, Material, matrices.GetRange(i, count), props);
         }
     }
-    //----------------------------------RENDERER------------------------------------------
+
     private void RenderLavaAsMesh()
     {
         ComputeBuffer PositionBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 3);
@@ -425,5 +431,37 @@ public class SimulationSpawner3D : MonoBehaviour
         PositionBuffer.Dispose();
         TriTableBuffer.Dispose();
         EdgeTableBuffer.Dispose();
+    }
+
+    private void LoadSDF()
+    {
+        SDFTexture = new RenderTexture(30, 30, 0, RenderTextureFormat.RFloat)
+        {
+            dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
+            volumeDepth = 30,
+            enableRandomWrite = true,
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+        SDFTexture.Create();
+
+        float[] SDFValues = new float[30 * 30 * 30];
+        TextAsset mytxtData = Resources.Load<TextAsset>("EarthSDF_30");
+        string txt = mytxtData.text;
+        string[] Values = txt.Split(' ');
+        Debug.Log("Loaded: " + Values.Length);
+        //Last value is empty, first 3 show how many sample points are taken, second 3 show the bounds of the scanner
+        for (int i = 6; i < Values.Length - 1; i++)
+        {
+            SDFValues[i - 6] = float.Parse(Values[i]);
+        }
+
+        ComputeBuffer SDFValueBuffer = new ComputeBuffer(SDFValues.Length, sizeof(float));
+        SDFValueBuffer.SetData(SDFValues);
+
+        SDFLoader.SetBuffer(0, "SDFValues", SDFValueBuffer);
+        SDFLoader.SetTexture(0, "SDFTexture", SDFTexture);
+        SDFLoader.SetInts("SDFSize", 30, 30, 30);
+        SDFLoader.Dispatch(0, 10, 10, 10);
     }
 }

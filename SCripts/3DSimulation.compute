@@ -6,12 +6,54 @@ float TimePassed;
 float TargetDensity; // How thick is the Liquid
 float PressureMultiplier; //How Fast should we reach the target state
 float ViscosityMultiplier;
-float BoundsWidth;
-float BoundsHeight;
-float BoundsDepth;
+float BoundsWidth; //Centered on 0
+float BoundsHeight; //Beginning on 0
+float BoundsDepth; //Centered on 0
 float MaxSpeed;
 RWStructuredBuffer<float> CachedDensities;
 RWStructuredBuffer<float3> PredictedPosition;
+
+//--------Slightly adapted from: https://github.com/SebLague/Fluid-Planet/blob/main/Assets/Scripts/Simulation/Compute/FluidSim.compute
+RWTexture3D<float> SDFTexture;
+uint3 SDFSize;
+SamplerState linearClampSampler;
+
+const float4x4 sdfWorldToLocalMatrix;
+float SampleSDF(float3 posWorld) {
+    posWorld = posWorld + (BoundsWidth/2,0,BoundsDepth/2); // Undo the bounds offset
+    posWorld = posWorld / (BoundsWidth/SDFSize.x,BoundsHeight/SDFSize.y, BoundsDepth/SDFSize.z); // Scale the Bounds value to fit inside the SDF Bounds, both should have same Verhältnisse
+    float dstFromSurface = SDFTexture[posWorld];
+    return dstFromSurface;
+}
+
+float3 calculateSDFNormal(float3 pos) {
+    const float s = 0.4;
+    float3 offsetX = int3(1, 0, 0) * s;
+    float3 offsetY = int3(0, 1, 0) * s;
+    float3 offsetZ = int3(0, 0, 1) * s;
+
+    float dx = SampleSDF(pos + offsetX) - SampleSDF(pos - offsetX);
+    float dy = SampleSDF(pos + offsetY) - SampleSDF(pos - offsetY);
+    float dz = SampleSDF(pos + offsetZ) - SampleSDF(pos - offsetZ);
+
+    return normalize(float3(dx, dy, dz));
+}
+
+void ResolveCollisionsSDF(inout float3 pos, inout float3 vel, float collisionDamping) {
+    float dstFromSurface = SampleSDF(pos);
+
+    if (dstFromSurface < 0) {
+        float3 up = calculateSDFNormal(pos);
+        pos -= up * min(0, dstFromSurface);
+
+        if (dot(vel, up) < 0) {
+            vel -= up * dot(up, vel);
+            vel *= collisionDamping;
+        }
+        //pos = (0,0,0);
+    }
+}
+//-----------
 
 float3 CalcPosition (LavaPoint Point) {
     return Point.Position+Point.Velocity*TimePassed;
@@ -177,6 +219,14 @@ LavaPoint HandleCollision(LavaPoint Point) {
         Point.Position.z = BoundsDepth/2;
         Point.Velocity = float3(Point.Velocity.x,Point.Velocity.y,-Point.Velocity.z*EnergyLossOnCollision);
     }
+    float3 Position = Point.Position;
+    float3 Velocity = Point.Velocity;
+
+    ResolveCollisionsSDF(Position, Velocity,EnergyLossOnCollision);
+
+    Point.Position = Position;
+    Point.Velocity = Velocity;
+
     return Point;
 }
 
