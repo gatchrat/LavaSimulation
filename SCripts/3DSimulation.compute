@@ -130,7 +130,6 @@ float3 CalcPressureForce(int PointID) {
         uint hash = HashCell3D(originCell + offsets3D[i]);
         uint key = KeyFromHash(hash, ParticleCount);
         uint currIndex = SpatialOffsets[key];
-
         while (currIndex < ParticleCount) {
             uint neighbourIndex = currIndex;
             currIndex++;
@@ -287,7 +286,6 @@ float2 CalcDensity(int PointID) {
         uint hash = HashCell3D(originCell + offsets3D[i]);
         uint key = KeyFromHash(hash, ParticleCount);
         uint currIndex = SpatialOffsets[key];
-
         while (currIndex < ParticleCount) {
             uint neighbourIndex = currIndex;
             currIndex++;

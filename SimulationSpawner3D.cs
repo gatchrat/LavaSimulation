@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System;
 using System.Runtime.InteropServices;
 using System.Linq;
+using Unity.VisualScripting;
 public struct HashEntry
 {
     public uint hash;
@@ -119,7 +120,7 @@ public class SimulationSpawner3D : MonoBehaviour
         };
         if (!RandomSpawns)
         {
-            Point.Position = new Vector3((-XCount / 2 + x) * 0.15f, y * 0.15f, (-ZCount / 2 + z) * 0.15f);
+            Point.Position = new Vector3((-XCount / 2 + x) * 0.15f, y * 0.15f + 0.5f, (-ZCount / 2 + z) * 0.15f);
         }
         else
         {
@@ -162,7 +163,7 @@ public class SimulationSpawner3D : MonoBehaviour
         CurrentKernel = ComputeShader.FindKernel("PredictPositions");
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         //Generate Position Hashes for performant Neighbor search
         /* for (int i = 0; i < HashesBufferSize; i++)
@@ -182,7 +183,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
 
         CurrentKernel = ComputeShader.FindKernel("SortHashesNeu");
@@ -207,29 +208,17 @@ public class SimulationSpawner3D : MonoBehaviour
                 ComputeShader.Dispatch(CurrentKernel, Points.Length / 2, 1, 1);
             }
         }
-        uint[] Keys = new uint[16];
-        uint[] Offsets = new uint[16];
-        uint[] Indices = new uint[16];
-        sortedIndices.GetData(Indices);
-        spatialKeys.GetData(Keys);
-        for (int i = 0; i < Keys.Length; i++)
-        {
-            //Debug.Log("Point at:" + Points[i].Position);
-            // Debug.Log("Hash:" + Keys[i]);
-            //Debug.Log("Index" + Indices[i]);
-        }
-
         CurrentKernel = ComputeShader.FindKernel("InitializeOffsets");
         ComputeShader.SetBuffer(CurrentKernel, "SortedKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "Offsets", spatialOffsets);
-        ComputeShader.SetInt("numInputs", spatialKeys.count);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
+        ComputeShader.SetInt("numInputs", Points.Length);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         CurrentKernel = ComputeShader.FindKernel("CalculateOffsets");
         ComputeShader.SetBuffer(CurrentKernel, "SortedKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "Offsets", spatialOffsets);
-        ComputeShader.SetInt("numInputs", spatialKeys.count);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
+        ComputeShader.SetInt("numInputs", Points.Length);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
 
 
@@ -240,7 +229,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "SortTarget_PredictedPositions", sortTarget_predictedPositionsBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         // Reorder copyback kernel
         CurrentKernel = ComputeShader.FindKernel("ReorderCopyBack");
@@ -249,7 +238,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "SortTarget_PredictedPositions", sortTarget_predictedPositionsBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
 
 
@@ -306,7 +295,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
         ComputeShader.SetFloat("TimePassed", TimeStep);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         //Calculate Forces and Movement
         CurrentKernel = ComputeShader.FindKernel("Simulation");
@@ -330,15 +319,6 @@ public class SimulationSpawner3D : MonoBehaviour
 
         LavaBuffer.GetData(Points);
         PositionBuffer.GetData(PredictedPositions);
-
-        foreach (var Point in Points)
-        {
-            if (Point.Color.x == 0)
-            {
-                Debug.Log(Point.Position);
-                break;
-            }
-        }
     }
     private void RenderLava()
     {
