@@ -218,7 +218,7 @@ float3 CalcVelocity (int PointID) {
     const float3 Gravity = float3(0,-9.81,0);
     Point.Velocity+=Gravity*TimePassed;
     //F =a/m where m is the density because fluid
-    Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
+    // Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
     //Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
     return Point.Velocity;
 }
@@ -267,7 +267,7 @@ LavaPoint HandleCollision(LavaPoint Point) {
     return Point;
 }
 
-[numthreads(10,1,1)]
+[numthreads(8,1,1)]
 void Simulation (uint3 id : SV_DispatchThreadID) {
     LavaPoint CurPoint = Points[id.x];
     CurPoint = ReColor(id.x);
@@ -501,7 +501,7 @@ void March(uint3 id : SV_DispatchThreadID) {
 //Calc my hash and of each surrounding grid
 //Based on the start indizes go through points and calc distance
 
-[numthreads(10,1,1)]
+[numthreads(8,1,1)]
 void CalcHashes (uint3 id : SV_DispatchThreadID) {
     if(id.x >=ParticleCount) {
         return;
