@@ -13,6 +13,7 @@
 float TimePassed;
 float TargetDensity; // How thick is the Liquid
 float PressureMultiplier; //How Fast should we reach the target state
+float NearPressureMultiplier;
 float ViscosityMultiplier;
 float BoundsWidth; //Centered on 0
 float BoundsHeight; //Beginning on 0
@@ -87,9 +88,17 @@ float GetPressureFromDensity(float Density) {
     float Pressure = DensityDiff * PressureMultiplier;
     return Pressure;
 }
+float NearPressureFromDensity(float NearDensity) {
+    return NearDensity * NearPressureMultiplier;
+}
 float CalcSharedPressure(float DensityA, float DensityB) {
     float a = GetPressureFromDensity(DensityA);
     float b = GetPressureFromDensity(DensityB);
+    return(a+b)/2;
+}
+float CalcSharedNearPressure(float DensityA, float DensityB) {
+    float a = NearPressureFromDensity(DensityA);
+    float b = NearPressureFromDensity(DensityB);
     return(a+b)/2;
 }
 float3 CalcPressureForce(int PointID) {
@@ -129,8 +138,12 @@ float3 CalcPressureForce(int PointID) {
                         float NeighborDensity = CachedDensities[Index].x;
                         float Slope = DerivativeSpikyPow23D(Distance,SmoothingRadius);
                         float SharedPressure = CalcSharedPressure(Density.x,NeighborDensity);
+                        float NeighborNearDensity = CachedDensities[Index].y;
+                        float NearSlope = DerivativeSpikyPow33D(Distance,SmoothingRadius);
+                        float NearSharedPressure = CalcSharedNearPressure(Density.y,NeighborNearDensity);
                         if(NeighborDensity > 0) {
                             DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
+                            DirectionalPressure += AbsDirection*NearSlope*NearSharedPressure/NeighborNearDensity;
                         }
                     }
                     //-----------------------------------
@@ -192,14 +205,6 @@ float3 CalcViscosityForce(int PointID) {
 //Density Target pulls things together -> Lava Clump gets "ripped" into smaller clumps because the big one wasnt quite dense enough
 //Idea: Push close particles always a little apart to disincentivise clumping on small scales?
 //INFO: Increase the force multiplier makes the simulation more accurate, but requires more fps to not break down due to too big time steps
-float3 ClampVelocity(float3 Velocity) {
-    float Value = dot(Velocity, Velocity);
-    float Size = sqrt(Value);
-    if(Size > MaxSpeed) {
-        Velocity = Velocity/Size*MaxSpeed;//Scale down to 1 and then back up to Clamp Vector size to Maxspeed
-    }
-    return Velocity;
-}
 
 float3 CalcVelocity (int PointID) {
     LavaPoint Point = Points[PointID];
@@ -208,7 +213,7 @@ float3 CalcVelocity (int PointID) {
     //F =a/m where m is the density because fluid
     Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
     Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
-    return ClampVelocity(Point.Velocity);
+    return Point.Velocity;
 }
 
 LavaPoint ReColor(int PointID) {
@@ -246,7 +251,7 @@ LavaPoint HandleCollision(LavaPoint Point) {
     float3 Position = Point.Position;
     float3 Velocity = Point.Velocity;
 
-    ResolveCollisionsSDF(Position, Velocity,EnergyLossOnCollision);
+    // ResolveCollisionsSDF(Position, Velocity,EnergyLossOnCollision);
 
     Point.Position = Position;
     Point.Velocity = Velocity;

@@ -30,6 +30,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public float BoundsDepth = 14;
     public float TargetDensity;
     public float PressureMultiplier;
+    public float NearPressureMultiplier;
     public float SmoothingRadius = 10f;
     public float MaxSpeed = 1f;
     private Mesh Mesh;
@@ -55,6 +56,9 @@ public class SimulationSpawner3D : MonoBehaviour
     private float BoundsDepthAtStart;
     private RenderTexture SDFTexture;
     private ComputeBuffer PositionBuffer;
+    private ComputeBuffer StartingIndizesBuffer;
+    private ComputeBuffer HashesBuffer;
+    private ComputeBuffer DensityBuffer;
 
     void Start()
     {
@@ -88,7 +92,13 @@ public class SimulationSpawner3D : MonoBehaviour
     }
     void Update()
     {
-        ComputeLava(Mathf.Min(Time.deltaTime, 1f / 60f));//Run at atleast 60fps, slow down the simulation if framerate not reached to prevent explosion
+        //Run at atleast 60fps, slow down the simulation if framerate not reached to prevent explosion
+        //Run 3 Simulation Steps per frame to improve Timestep size while not being slowed down by the render
+        ComputeLava(Mathf.Min(Time.deltaTime / 3, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3, 1f / 180f));
+        RenderLava();
+        DisposeBuffers();
     }
 
     private void InitLava(int x, int y, int z)
@@ -136,14 +146,14 @@ public class SimulationSpawner3D : MonoBehaviour
         {
             Hashes[i] = new HashEntry { hash = 0xFFFFFFFF, index = uint.MaxValue };
         }
-        ComputeBuffer HashesBuffer = new ComputeBuffer(Hashes.Length, Marshal.SizeOf(typeof(HashEntry)));
+        HashesBuffer = new ComputeBuffer(Hashes.Length, Marshal.SizeOf(typeof(HashEntry)));
         HashesBuffer.SetData(Hashes);
 
         StartingIndizes = new uint[NumOfPossibleHashes];
         for (int i = 0; i < StartingIndizes.Length; i++)
             StartingIndizes[i] = 0xFFFFFFFF; // -1 as unsigned
 
-        ComputeBuffer StartingIndizesBuffer = new ComputeBuffer(StartingIndizes.Length, sizeof(uint));
+        StartingIndizesBuffer = new ComputeBuffer(StartingIndizes.Length, sizeof(uint));
         StartingIndizesBuffer.SetData(StartingIndizes);
         CurrentKernel = ComputeShader.FindKernel("CalcHashes");
         ComputeShader.SetBuffer(CurrentKernel, "Hashes", HashesBuffer);
@@ -185,7 +195,7 @@ public class SimulationSpawner3D : MonoBehaviour
         HashesBuffer.GetData(Hashes);
 
         //Cachses Densities to prevent expensive recalculation over and over again
-        ComputeBuffer DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 2);
+        DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 2);
         DensityBuffer.SetData(Densities);
         CurrentKernel = ComputeShader.FindKernel("DensityCache");
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
@@ -211,11 +221,14 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloat("ViscosityMultiplier", Viscosity);
         ComputeShader.SetFloat("TargetDensity", TargetDensity);
         ComputeShader.SetFloat("PressureMultiplier", PressureMultiplier);
+        ComputeShader.SetFloat("NearPressureMultiplier", NearPressureMultiplier);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
 
         LavaBuffer.GetData(Points);
         PositionBuffer.GetData(PredictedPositions);
-
+    }
+    private void RenderLava()
+    {
         //Render Results
         if (Renderer == RenderMode.AsMesh)
         {
@@ -223,13 +236,15 @@ public class SimulationSpawner3D : MonoBehaviour
         }
         else if (Renderer == RenderMode.ByVelocity || Renderer == RenderMode.ByDensity)
         {
-            RenderLava();
+            RenderLavaNormal();
         }
         else if (Renderer == RenderMode.ByHash)
         {
             RenderLavaByHash();
         }
-
+    }
+    private void DisposeBuffers()
+    {
         //Free Up Memory
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
@@ -238,7 +253,7 @@ public class SimulationSpawner3D : MonoBehaviour
         StartingIndizesBuffer.Dispose();
     }
     //----------------------------------RENDERER------------------------------------------
-    private void RenderLava()
+    private void RenderLavaNormal()
     {
         // Render in batches of 1023 (Unity limitation)
         matrices.Clear();
