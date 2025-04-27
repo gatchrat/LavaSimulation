@@ -18,13 +18,8 @@ public class SimulationSpawner3D : MonoBehaviour
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     public ComputeShader ComputeShader;
-    public ComputeShader marchingCubesShader;
-    public ComputeShader SDFLoader;
+
     public MeshFilter LavaGeneratedMesh;
-    public ComputeShader DensityCacher;
-    public ComputeShader PositionPredicter;
-    public ComputeShader HashgridCalculator;
-    public ComputeShader DensityFieldCalculator;
     public Gradient colourMap;
     public RenderMode Renderer;
     public int XCount;
@@ -59,6 +54,8 @@ public class SimulationSpawner3D : MonoBehaviour
     private float BoundsWidthAtStart;
     private float BoundsDepthAtStart;
     private RenderTexture SDFTexture;
+    private ComputeBuffer PositionBuffer;
+
     void Start()
     {
         LoadSDF();
@@ -120,19 +117,19 @@ public class SimulationSpawner3D : MonoBehaviour
         int ColorSize = sizeof(float) * 4;
         int VelocitySize = sizeof(float) * 3;
         int TotalSize = PositionSize + ColorSize + VelocitySize;
-
+        int CurrentKernel = 0;
         float[] Densities = new float[Points.Length];
 
         LavaBuffer = new ComputeBuffer(Points.Length, TotalSize);
         LavaBuffer.SetData(Points);
 
         //Predict Positions 1 frame in the future, to improve reaction timing
-        ComputeBuffer PositionBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 3);
+        PositionBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 3);
         PositionBuffer.SetData(PredictedPositions);
-
-        PositionPredicter.SetBuffer(0, "Points", LavaBuffer);
-        PositionPredicter.SetBuffer(0, "PredictedPosition", PositionBuffer);
-        PositionPredicter.Dispatch(0, Points.Length / 10, 1, 1);
+        CurrentKernel = ComputeShader.FindKernel("PredictPositions");
+        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
 
         //Generate Position Hashes for performant Neighbor search
         for (int i = 0; i < HashesBufferSize; i++)
@@ -148,25 +145,23 @@ public class SimulationSpawner3D : MonoBehaviour
 
         ComputeBuffer StartingIndizesBuffer = new ComputeBuffer(StartingIndizes.Length, sizeof(uint));
         StartingIndizesBuffer.SetData(StartingIndizes);
-
-        HashgridCalculator.SetBuffer(0, "Hashes", HashesBuffer);
-        HashgridCalculator.SetBuffer(1, "Hashes", HashesBuffer);
-        HashgridCalculator.SetBuffer(2, "Hashes", HashesBuffer);
-        HashgridCalculator.SetBuffer(2, "StartingIndizes", StartingIndizesBuffer);
-        HashgridCalculator.SetInt("ParticleCount", Points.Length);
-        HashgridCalculator.SetInt("NumOfPossibleHashes", NumOfPossibleHashes);
-        HashgridCalculator.SetInt("HashesBufferSize", HashesBufferSize);
-        HashgridCalculator.SetBuffer(0, "Points", LavaBuffer);
-        HashgridCalculator.SetFloat("SmoothingRadius", SmoothingRadius);
-        HashgridCalculator.Dispatch(0, 1024, 1, 1);
+        CurrentKernel = ComputeShader.FindKernel("CalcHashes");
+        ComputeShader.SetBuffer(CurrentKernel, "Hashes", HashesBuffer);
+        ComputeShader.SetInt("ParticleCount", Points.Length);
+        ComputeShader.SetInt("NumOfPossibleHashes", NumOfPossibleHashes);
+        ComputeShader.SetInt("HashesBufferSize", HashesBufferSize);
+        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+        ComputeShader.SetFloat("SmoothingRadius", SmoothingRadius);
+        ComputeShader.Dispatch(CurrentKernel, 1024, 1, 1);
 
         //---------https://github.com/SebLague/Fluid-Sim/blob/Episode-01/Assets/Scripts/Compute%20Helpers/GPU%20Sort/GPUSort.cs
-        HashgridCalculator.SetInt("numEntries", Hashes.Length);
+        ComputeShader.SetInt("numEntries", Hashes.Length);
         // Launch each step of the sorting algorithm (once the previous step is complete)
         // Number of steps = [log2(n) * (log2(n) + 1)] / 2
         // where n = nearest power of 2 that is greater or equal to the number of inputs
         int numStages = (int)Math.Log(Hashes.Length, 2);
-
+        CurrentKernel = ComputeShader.FindKernel("SortHashes");
+        ComputeShader.SetBuffer(CurrentKernel, "Hashes", HashesBuffer);
         for (int stageIndex = 0; stageIndex < numStages; stageIndex++)
         {
             for (int stepIndex = 0; stepIndex < stageIndex + 1; stepIndex++)
@@ -174,43 +169,41 @@ public class SimulationSpawner3D : MonoBehaviour
                 // Calculate some pattern stuff
                 int groupWidth = 1 << (stageIndex - stepIndex);
                 int groupHeight = 2 * groupWidth - 1;
-                HashgridCalculator.SetInt("groupWidth", groupWidth);
-                HashgridCalculator.SetInt("groupHeight", groupHeight);
-                HashgridCalculator.SetInt("stepIndex", stepIndex);
+                ComputeShader.SetInt("groupWidth", groupWidth);
+                ComputeShader.SetInt("groupHeight", groupHeight);
+                ComputeShader.SetInt("stepIndex", stepIndex);
                 // Run the sorting step on the GPU
-                HashgridCalculator.Dispatch(1, Hashes.Length / 2, 1, 1);
+                ComputeShader.Dispatch(CurrentKernel, Hashes.Length / 2, 1, 1);
             }
         }
         //----------------------------------------------------------------------------------
-        HashgridCalculator.Dispatch(2, 1024, 1, 1);
+        CurrentKernel = ComputeShader.FindKernel("CalcStartingIndizes");
+        ComputeShader.SetBuffer(CurrentKernel, "Hashes", HashesBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "StartingIndizes", StartingIndizesBuffer);
+        ComputeShader.Dispatch(CurrentKernel, 1024, 1, 1);
         StartingIndizesBuffer.GetData(StartingIndizes);
         HashesBuffer.GetData(Hashes);
 
         //Cachses Densities to prevent expensive recalculation over and over again
         ComputeBuffer DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float));
         DensityBuffer.SetData(Densities);
-
-        DensityCacher.SetBuffer(0, "Points", LavaBuffer);
-        DensityCacher.SetBuffer(0, "Hashes", HashesBuffer);
-        DensityCacher.SetBuffer(0, "StartingIndizes", StartingIndizesBuffer);
-        DensityCacher.SetInt("NumOfPossibleHashes", NumOfPossibleHashes);
-        DensityCacher.SetBuffer(0, "CachedDensities", DensityBuffer);
-        DensityCacher.SetBuffer(0, "PredictedPosition", PositionBuffer);
-        DensityCacher.SetFloat("TimePassed", Time.deltaTime);
-        DensityCacher.SetFloat("SmoothingRadius", SmoothingRadius);
-        DensityCacher.SetInt("ParticleCount", Points.Length);
-        DensityCacher.Dispatch(0, Points.Length / 10, 1, 1);
+        CurrentKernel = ComputeShader.FindKernel("DensityCache");
+        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "Hashes", HashesBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "StartingIndizes", StartingIndizesBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "CachedDensities", DensityBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+        ComputeShader.SetFloat("TimePassed", Time.deltaTime);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
 
         //Calculate Forces and Movement
-        ComputeShader.SetTexture(0, "SDFTexture", SDFTexture);
-        ComputeShader.SetInts("SDFSize", 30, 30, 30);
-        ComputeShader.SetBuffer(0, "Hashes", HashesBuffer);
-        ComputeShader.SetBuffer(0, "StartingIndizes", StartingIndizesBuffer);
-        ComputeShader.SetInt("NumOfPossibleHashes", NumOfPossibleHashes);
-        ComputeShader.SetBuffer(0, "CachedDensities", DensityBuffer);
-        ComputeShader.SetBuffer(0, "PredictedPosition", PositionBuffer);
-        ComputeShader.SetBuffer(0, "Points", LavaBuffer);
-        ComputeShader.SetInt("ParticleCount", Points.Length);
+        CurrentKernel = ComputeShader.FindKernel("Simulation");
+        ComputeShader.SetTexture(CurrentKernel, "SDFTexture", SDFTexture);
+        ComputeShader.SetBuffer(CurrentKernel, "Hashes", HashesBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "StartingIndizes", StartingIndizesBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "CachedDensities", DensityBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
         ComputeShader.SetFloat("MaxSpeed", MaxSpeed);
         ComputeShader.SetFloat("BoundsHeight", BoundsHeight);
         ComputeShader.SetFloat("BoundsDepth", BoundsDepth);
@@ -219,8 +212,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloat("TimePassed", Time.deltaTime);
         ComputeShader.SetFloat("TargetDensity", TargetDensity);
         ComputeShader.SetFloat("PressureMultiplier", PressureMultiplier);
-        ComputeShader.SetFloat("SmoothingRadius", SmoothingRadius);
-        ComputeShader.Dispatch(0, Points.Length / 10, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
 
         LavaBuffer.GetData(Points);
         PositionBuffer.GetData(PredictedPositions);
@@ -306,8 +298,6 @@ public class SimulationSpawner3D : MonoBehaviour
 
     private void RenderLavaAsMesh()
     {
-        ComputeBuffer PositionBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 3);
-        PositionBuffer.SetData(PredictedPositions);
 
         int width = densityField.GetLength(0);
         int height = densityField.GetLength(1);
@@ -333,23 +323,21 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeBuffer StartingIndizesBuffer = new ComputeBuffer(StartingIndizes.Length, sizeof(uint));
         StartingIndizesBuffer.SetData(StartingIndizes);
 
-        DensityFieldCalculator.SetTexture(0, "DensityTexture", densityTexture);
-        DensityFieldCalculator.SetBuffer(0, "PredictedPosition", PositionBuffer);
-        DensityFieldCalculator.SetBuffer(0, "DensityValuesBuffer", DensityValuesBuffer);
-        DensityFieldCalculator.SetBuffer(0, "Hashes", HashesBuffer);
-        DensityFieldCalculator.SetBuffer(0, "StartingIndizes", StartingIndizesBuffer);
-        DensityFieldCalculator.SetFloat("SmoothingRadius", SmoothingRadius);
-        DensityFieldCalculator.SetInt("NumOfPossibleHashes", NumOfPossibleHashes);
-        DensityFieldCalculator.SetInt("ParticleCount", Points.Length);
-        DensityFieldCalculator.SetInt("FieldWidth", width);
-        DensityFieldCalculator.SetInt("FieldHeight", height);
-        DensityFieldCalculator.SetInt("FieldDepth", depth);
-        DensityFieldCalculator.SetFloat("VoxelSize", voxelSize);
+        int CurrentKernel = ComputeShader.FindKernel("DensityField");
+        ComputeShader.SetTexture(CurrentKernel, "DensityTexture", densityTexture);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "DensityValuesBuffer", DensityValuesBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "Hashes", HashesBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "StartingIndizes", StartingIndizesBuffer);
+        ComputeShader.SetInt("FieldWidth", width);
+        ComputeShader.SetInt("FieldHeight", height);
+        ComputeShader.SetInt("FieldDepth", depth);
+        ComputeShader.SetFloat("VoxelSize", voxelSize);
 
         int dispatchX = Mathf.CeilToInt(densityTexture.width / 8.0f);
         int dispatchY = Mathf.CeilToInt(densityTexture.height / 8.0f);
         int dispatchZ = Mathf.CeilToInt(densityTexture.volumeDepth / 8.0f);
-        DensityFieldCalculator.Dispatch(0, dispatchX, dispatchY, dispatchZ);
+        ComputeShader.Dispatch(CurrentKernel, dispatchX, dispatchY, dispatchZ);
 
         DensityValuesBuffer.GetData(DensityValues);
         PositionBuffer.GetData(PredictedPositions);
@@ -383,18 +371,15 @@ public class SimulationSpawner3D : MonoBehaviour
         vertexCountBuffer.SetData(initialCount);
         vertexBuffer.SetCounterValue(0);
 
-        marchingCubesShader.SetFloat("BoundsHeight", BoundsHeight);
-        marchingCubesShader.SetFloat("BoundsDepth", BoundsDepthAtStart);
-        marchingCubesShader.SetFloat("BoundsWidth", BoundsWidthAtStart);
-        marchingCubesShader.SetFloat("VoxelSize", voxelSize);
-        marchingCubesShader.SetBuffer(0, "VertexCount", vertexCountBuffer);
-        marchingCubesShader.SetTexture(0, "DensityTexture", densityTexture);
-        marchingCubesShader.SetBuffer(0, "VertexBuffer", vertexBuffer);
-        marchingCubesShader.SetBuffer(0, "EdgeTable", EdgeTableBuffer);
-        marchingCubesShader.SetBuffer(0, "TriTable", TriTableBuffer);
-        marchingCubesShader.SetInts("GridSize", numVoxelsX, numVoxelsY, numVoxelsZ);
-        marchingCubesShader.SetFloat("IsoLevel", isoLevel);
-        marchingCubesShader.Dispatch(0, dispatchX, dispatchY, dispatchZ);
+        CurrentKernel = ComputeShader.FindKernel("March");
+        ComputeShader.SetBuffer(CurrentKernel, "VertexCount", vertexCountBuffer);
+        ComputeShader.SetTexture(CurrentKernel, "DensityTexture", densityTexture);
+        ComputeShader.SetBuffer(CurrentKernel, "VertexBuffer", vertexBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "EdgeTable", EdgeTableBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "TriTable", TriTableBuffer);
+        ComputeShader.SetInts("GridSize", numVoxelsX, numVoxelsY, numVoxelsZ);
+        ComputeShader.SetFloat("IsoLevel", isoLevel);
+        ComputeShader.Dispatch(CurrentKernel, dispatchX, dispatchY, dispatchZ);
 
         //Build Mesh
         // Allocate arrays
@@ -458,10 +443,10 @@ public class SimulationSpawner3D : MonoBehaviour
 
         ComputeBuffer SDFValueBuffer = new ComputeBuffer(SDFValues.Length, sizeof(float));
         SDFValueBuffer.SetData(SDFValues);
-
-        SDFLoader.SetBuffer(0, "SDFValues", SDFValueBuffer);
-        SDFLoader.SetTexture(0, "SDFTexture", SDFTexture);
-        SDFLoader.SetInts("SDFSize", 30, 30, 30);
-        SDFLoader.Dispatch(0, 10, 10, 10);
+        int CurrentKernel = ComputeShader.FindKernel("LOADSDF");
+        ComputeShader.SetBuffer(CurrentKernel, "SDFValues", SDFValueBuffer);
+        ComputeShader.SetTexture(CurrentKernel, "SDFTexture", SDFTexture);
+        ComputeShader.SetInts("SDFSize", 30, 30, 30);
+        ComputeShader.Dispatch(CurrentKernel, 10, 10, 10);
     }
 }
