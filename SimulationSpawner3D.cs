@@ -32,7 +32,6 @@ public class SimulationSpawner3D : MonoBehaviour
     public float PressureMultiplier;
     public float NearPressureMultiplier;
     public float SmoothingRadius = 10f;
-    public float MaxSpeed = 1f;
     private Mesh Mesh;
     public Material Material;
     public Boolean RandomSpawns = false;
@@ -89,15 +88,21 @@ public class SimulationSpawner3D : MonoBehaviour
         HashesBufferSize = Mathf.NextPowerOfTwo(Points.Length);
         Debug.Log("Hashbuffersize:" + HashesBufferSize);
         Hashes = new HashEntry[HashesBufferSize];
+
+        InitBuffers();
     }
     void Update()
     {
         //Run at atleast 60fps, slow down the simulation if framerate not reached to prevent explosion
         //Run 3 Simulation Steps per frame to improve Timestep size while not being slowed down by the render
-        ComputeLava(Mathf.Min(Time.deltaTime / 3, 1f / 180f));
-        ComputeLava(Mathf.Min(Time.deltaTime / 3, 1f / 180f));
-        ComputeLava(Mathf.Min(Time.deltaTime / 3, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
         RenderLava();
+    }
+
+    void OnApplicationQuit()
+    {
         DisposeBuffers();
     }
 
@@ -121,14 +126,16 @@ public class SimulationSpawner3D : MonoBehaviour
         Points[z + y * ZCount + x * ZCount * YCount] = Point;
         densityField = new float[(int)(BoundsWidth / voxelSize), (int)(BoundsHeight / voxelSize), (int)(BoundsDepth / voxelSize)];
     }
-    private void ComputeLava(float TimeStep)
+    void InitBuffers()
     {
         int PositionSize = sizeof(float) * 3;
         int ColorSize = sizeof(float) * 4;
         int VelocitySize = sizeof(float) * 3;
         int TotalSize = PositionSize + ColorSize + VelocitySize;
-        int CurrentKernel = 0;
+
         Vector2[] Densities = new Vector2[Points.Length];
+        DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 2);
+        DensityBuffer.SetData(Densities);
 
         LavaBuffer = new ComputeBuffer(Points.Length, TotalSize);
         LavaBuffer.SetData(Points);
@@ -136,10 +143,14 @@ public class SimulationSpawner3D : MonoBehaviour
         //Predict Positions 1 frame in the future, to improve reaction timing
         PositionBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 3);
         PositionBuffer.SetData(PredictedPositions);
+    }
+    private void ComputeLava(float TimeStep)
+    {
+        int CurrentKernel = 0;
         CurrentKernel = ComputeShader.FindKernel("PredictPositions");
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 1024, 1, 1);
 
         //Generate Position Hashes for performant Neighbor search
         for (int i = 0; i < HashesBufferSize; i++)
@@ -162,7 +173,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetInt("HashesBufferSize", HashesBufferSize);
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
         ComputeShader.SetFloat("SmoothingRadius", SmoothingRadius);
-        ComputeShader.Dispatch(CurrentKernel, 1024, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
 
         //---------https://github.com/SebLague/Fluid-Sim/blob/Episode-01/Assets/Scripts/Compute%20Helpers/GPU%20Sort/GPUSort.cs
         ComputeShader.SetInt("numEntries", Hashes.Length);
@@ -195,8 +206,7 @@ public class SimulationSpawner3D : MonoBehaviour
         HashesBuffer.GetData(Hashes);
 
         //Cachses Densities to prevent expensive recalculation over and over again
-        DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 2);
-        DensityBuffer.SetData(Densities);
+
         CurrentKernel = ComputeShader.FindKernel("DensityCache");
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "Hashes", HashesBuffer);
@@ -214,7 +224,6 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "CachedDensities", DensityBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
-        ComputeShader.SetFloat("MaxSpeed", MaxSpeed);
         ComputeShader.SetFloat("BoundsHeight", BoundsHeight);
         ComputeShader.SetFloat("BoundsDepth", BoundsDepth);
         ComputeShader.SetFloat("BoundsWidth", BoundsWidth);

@@ -404,13 +404,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ComputeShader: {fileID: 7200000, guid: 9356205ead5810e4c95012b5ec7abb9b, type: 3}
-  marchingCubesShader: {fileID: 7200000, guid: 7970c66b49651b6458f1f6b17f7ce81a, type: 3}
-  SDFLoader: {fileID: 7200000, guid: 65b6ac8c5dbd858469ad1ee5818f9675, type: 3}
   LavaGeneratedMesh: {fileID: 2017910448}
-  DensityCacher: {fileID: 7200000, guid: b1b760cecdf943a44a552b958c40de0e, type: 3}
-  PositionPredicter: {fileID: 7200000, guid: cd6fa87096a82c14e8b84b08cefab73e, type: 3}
-  HashgridCalculator: {fileID: 7200000, guid: 36296cf238f59624999d3ed2e9692c3b, type: 3}
-  DensityFieldCalculator: {fileID: 7200000, guid: 6dadaf1e407821a43a59abbd74e5a109, type: 3}
   colourMap:
     serializedVersion: 2
     key0: {r: 0.02277422, g: 0, b: 1, a: 1}
@@ -448,13 +442,13 @@ MonoBehaviour:
   BoundsWidth: 10
   BoundsHeight: 8
   BoundsDepth: 8
-  TargetDensity: 20
-  PressureMultiplier: 55
-  SmoothingRadius: 0.35
-  MaxSpeed: 10
+  TargetDensity: 630
+  PressureMultiplier: 280
+  NearPressureMultiplier: 2.16
+  SmoothingRadius: 0.2
   Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
   RandomSpawns: 1
-  Viscosity: 0.1
+  Viscosity: 0
   isoLevel: 1
   voxelSize: 0.1
 --- !u!1 &380027629

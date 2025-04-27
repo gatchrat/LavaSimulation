@@ -21,7 +21,6 @@ float BoundsDepth; //Centered on 0
 // Grid size and threshold
 int3 GridSize;
 float IsoLevel;
-float MaxSpeed;
 int FieldWidth;
 int FieldHeight;
 int FieldDepth;
@@ -157,12 +156,11 @@ float3 CalcPressureForce(int PointID) {
 
 //Particles closeby slow me down or speed me up, kinda like friction.
 float3 CalcViscosityForce(int PointID) {
-    LavaPoint Point = Points[PointID];
-
-    float2 Density = CachedDensities[PointID];
-    if(Density.x == 0) {
+    if (ViscosityMultiplier == 0) {
         return float3(0,0,0);
     }
+    LavaPoint Point = Points[PointID];
+
     float3 ViscosityForce = 0;
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
