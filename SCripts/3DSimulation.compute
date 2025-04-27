@@ -8,7 +8,15 @@
 #pragma kernel LOADSDF
 #pragma kernel DensityField
 #pragma kernel PredictPositions
+#pragma kernel UpdateSpatialHash
+#pragma kernel ReorderCopyBack
+#pragma kernel Reorder
+#pragma kernel SortHashesNeu
+#pragma kernel InitializeOffsets
+#pragma kernel  CalculateOffsets
+
 #include "./Tools.compute"
+#include "./SpatialHash3D.compute"
 
 float TimePassed;
 float TargetDensity; // How thick is the Liquid
@@ -32,6 +40,11 @@ RWStructuredBuffer<float2> CachedDensities;
 RWStructuredBuffer<float3> VertexBuffer;
 RWStructuredBuffer<int> VertexCount;
 RWStructuredBuffer<float> SDFValues;
+
+//SEB
+RWStructuredBuffer<uint> SpatialKeys; // used for spatial hashing
+RWStructuredBuffer<uint> SpatialOffsets; // used for spatial hashing
+RWStructuredBuffer<uint> SortedIndices;
 
 // Lookup tables
 StructuredBuffer<int> EdgeTable;      // 256 entries
@@ -111,47 +124,47 @@ float3 CalcPressureForce(int PointID) {
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
     float3 MyPosition = PredictedPosition[PointID];
+    int3 originCell = GetCell3D(MyPosition, SmoothingRadius);
 
-    for(uint i = 0; i<27;i++) {
-        float3 CheckPos = OffSetPosition(MyPosition,i);
-        uint CheckHash = CalcHash(CheckPos+float3(10,0,10));//Move Pos to always be positive
-        uint StartIndex = StartingIndizes[CheckHash];
-        if(StartIndex== 0xFFFFFFFF) {
+    for (int i = 0; i < 27; i++) {
+        uint hash = HashCell3D(originCell + offsets3D[i]);
+        uint key = KeyFromHash(hash, ParticleCount);
+        uint currIndex = SpatialOffsets[key];
+
+        while (currIndex < ParticleCount) {
+            uint neighbourIndex = currIndex;
+            currIndex++;
+
+            // Skip if looking at self
+            if (neighbourIndex == PointID)
             continue;
-        }
-        while(StartIndex < ParticleCount) {
-            //Check if still checking in the right hashgroup
-            if(Hashes[StartIndex].hash != CheckHash) {
-                break;
-            }
-            if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
-                uint Index = Hashes[StartIndex].index;
-                if(Index != PointID) {
-                    //-----------------------------------
-                    float3 Direction = PredictedPosition[Index]-MyPosition;
-                    float sqrDstToNeighbour = dot(Direction,Direction);
-                    float Distance = sqrt(sqrDstToNeighbour);
 
-                    if (sqrDstToNeighbour <= sqrRadius) {
-                        float3 AbsDirection = Distance > 0 ? Direction / Distance : float3(0, 1,0);
-                        float NeighborDensity = CachedDensities[Index].x;
-                        float Slope = DerivativeSpikyPow23D(Distance,SmoothingRadius);
-                        float SharedPressure = CalcSharedPressure(Density.x,NeighborDensity);
-                        float NeighborNearDensity = CachedDensities[Index].y;
-                        float NearSlope = DerivativeSpikyPow33D(Distance,SmoothingRadius);
-                        float NearSharedPressure = CalcSharedNearPressure(Density.y,NeighborNearDensity);
-                        if(NeighborDensity > 0) {
-                            DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
-                            DirectionalPressure += AbsDirection*NearSlope*NearSharedPressure/NeighborNearDensity;
-                        }
-                    }
-                    //-----------------------------------
+            uint neighbourKey = SpatialKeys[neighbourIndex];
+            // Exit if no longer looking at correct bin
+            if (neighbourKey != key)
+            break;
+            //-----------------------------------
+            float3 Direction = PredictedPosition[currIndex]-MyPosition;
+            float sqrDstToNeighbour = dot(Direction,Direction);
+            float Distance = sqrt(sqrDstToNeighbour);
+
+            if (sqrDstToNeighbour <= sqrRadius) {
+                float3 AbsDirection = Distance > 0 ? Direction / Distance : float3(0, 1,0);
+                float NeighborDensity = CachedDensities[currIndex].x;
+                float Slope = DerivativeSpikyPow23D(Distance,SmoothingRadius);
+                float SharedPressure = CalcSharedPressure(Density.x,NeighborDensity);
+                float NeighborNearDensity = CachedDensities[currIndex].y;
+                float NearSlope = DerivativeSpikyPow33D(Distance,SmoothingRadius);
+                float NearSharedPressure = CalcSharedNearPressure(Density.y,NeighborNearDensity);
+                if(NeighborDensity > 0) {
+                    DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
+                    DirectionalPressure += AbsDirection*NearSlope*NearSharedPressure/NeighborNearDensity;
                 }
             }
-            StartIndex++;
+            //-----------------------------------
         }
     }
-    return float3(DirectionalPressure.x,DirectionalPressure.y,DirectionalPressure.z)/Density.x;
+    return DirectionalPressure/Density.x;
 }
 
 //Particles closeby slow me down or speed me up, kinda like friction.
@@ -199,10 +212,6 @@ float3 CalcViscosityForce(int PointID) {
     }
     return float3(ViscosityForce.x,ViscosityForce.y,ViscosityForce.z)*ViscosityMultiplier;
 }
-//TODO: Add Near Pressure to prevent:
-//Density Target pulls things together -> Lava Clump gets "ripped" into smaller clumps because the big one wasnt quite dense enough
-//Idea: Push close particles always a little apart to disincentivise clumping on small scales?
-//INFO: Increase the force multiplier makes the simulation more accurate, but requires more fps to not break down due to too big time steps
 
 float3 CalcVelocity (int PointID) {
     LavaPoint Point = Points[PointID];
@@ -210,7 +219,7 @@ float3 CalcVelocity (int PointID) {
     Point.Velocity+=Gravity*TimePassed;
     //F =a/m where m is the density because fluid
     Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
-    Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
+    //Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
     return Point.Velocity;
 }
 
@@ -219,6 +228,7 @@ LavaPoint ReColor(int PointID) {
     Point.Color =  float4(CachedDensities[PointID].x,0,0,0);
     return Point;
 }
+
 LavaPoint HandleCollision(LavaPoint Point) {
     const float EnergyLossOnCollision = 0.5f;
     const float EnergyLossOnCollisionFloor = 0.7f;
@@ -271,35 +281,31 @@ float2 CalcDensity(int PointID) {
     float2 Density = (0,0);
     float sqrRadius = SmoothingRadius * SmoothingRadius;
     float3 MyPosition = PredictedPosition[PointID];
+    int3 originCell = GetCell3D(MyPosition, SmoothingRadius);
 
-    for(uint i = 0; i<27;i++) {
-        float3 CheckPos = OffSetPosition(MyPosition,i);
-        uint CheckHash = CalcHash(CheckPos+float3(10,0,10));//Move Pos to always be positive
-        uint StartIndex = StartingIndizes[CheckHash];
-        if(StartIndex== 0xFFFFFFFF) {
-            continue;
-        }
-        while(StartIndex < ParticleCount) {
-            //Check if still checking in the right hashgroup
-            if(Hashes[StartIndex].hash != CheckHash) {
-                break;
-            }
-            if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
-                uint Index = Hashes[StartIndex].index;
-                if(Index != PointID) {
-                    //-----------------------------------
-                    float3 Direction = PredictedPosition[Index]-MyPosition;
-                    float sqrDstToNeighbour = dot(Direction, Direction);
-                    float Distance = sqrt(sqrDstToNeighbour);
+    for (int i = 0; i < 27; i++) {
+        uint hash = HashCell3D(originCell + offsets3D[i]);
+        uint key = KeyFromHash(hash, ParticleCount);
+        uint currIndex = SpatialOffsets[key];
 
-                    if (sqrDstToNeighbour <= sqrRadius) {
-                        Density.x+=SpikyKernelPow23D(Distance,SmoothingRadius);
-                        Density.y+=SpikyKernelPow33D(Distance,SmoothingRadius);
-                    }
-                    //-----------------------------------
-                }
+        while (currIndex < ParticleCount) {
+            uint neighbourIndex = currIndex;
+            currIndex++;
+
+            uint neighbourKey = SpatialKeys[neighbourIndex];
+            // Exit if no longer looking at correct bin
+            if (neighbourKey != key)
+            break;
+            //-----------------------------------
+            float3 Direction = PredictedPosition[currIndex]-MyPosition;
+            float sqrDstToNeighbour = dot(Direction, Direction);
+            float Distance = sqrt(sqrDstToNeighbour);
+
+            if (sqrDstToNeighbour <= sqrRadius) {
+                Density.x+=SpikyKernelPow23D(Distance,SmoothingRadius);
+                Density.y+=SpikyKernelPow33D(Distance,SmoothingRadius);
             }
-            StartIndex++;
+            //-----------------------------------
         }
     }
     return Density;
@@ -382,7 +388,7 @@ void DensityField (uint3 id : SV_DispatchThreadID) {
 //------------------------------------------------------------POSITION PREDICTOR ---------------------------------------------------------------------------------
 float3 PredictPosition(int PointID) {
     LavaPoint CurPoint = Points[PointID];
-    float3 PredictedPosition = CurPoint.Position + (CurPoint.Velocity+float3(0,-9.81,0))/120;
+    float3 PredictedPosition = CurPoint.Position + (CurPoint.Velocity+float3(0,-9.81,0)/120)/120;
     return PredictedPosition;
 }
 [numthreads(1024,1,1)]
@@ -536,6 +542,32 @@ void SortHashes (uint3 id : SV_DispatchThreadID) {
         Hashes[indexRight] = temp;
     }
 }
+[numthreads(128, 1, 1)]
+void SortHashesNeu (uint3 id : SV_DispatchThreadID) {
+    uint i = id.x;
+
+    uint hIndex = i & (groupWidth - 1);
+    uint indexLeft = hIndex + (groupHeight + 1) * (i / groupWidth);
+    uint rightStepSize = stepIndex == 0 ? groupHeight - 2 * hIndex : (groupHeight + 1) / 2;
+    uint indexRight = indexLeft + rightStepSize;
+
+    // Exit if out of bounds (for non-power of 2 input sizes)
+    if (indexRight >= numEntries) return;
+
+    uint valueLeft = SpatialKeys[indexLeft];
+    uint valueRight = SpatialKeys[indexRight];
+
+    // Swap entries if value is descending
+    if (valueLeft > valueRight) {
+        uint temp = SpatialKeys[indexLeft];
+        SpatialKeys[indexLeft] = SpatialKeys[indexRight];
+        SpatialKeys[indexRight] = temp;
+
+        temp = SortedIndices[indexLeft];
+        SortedIndices[indexLeft] = SortedIndices[indexRight];
+        SortedIndices[indexRight] = temp;
+    }
+}
 //------------------------------------------------------------------------------------------------------------------------------------------
 [numthreads(1024, 1, 1)]
 void CalcStartingIndizes(uint3 id : SV_DispatchThreadID) {
@@ -555,5 +587,72 @@ void CalcStartingIndizes(uint3 id : SV_DispatchThreadID) {
         if (currentHash != prevHash) {
             StartingIndizes[currentHash] = i;
         }
+    }
+}
+
+//SEB HASH REPLACE LATER 
+[numthreads(1024, 1, 1)]
+void UpdateSpatialHash(uint3 id : SV_DispatchThreadID) {
+    if (id.x >= ParticleCount)
+    return;
+
+    uint index = id.x;
+    int3 cell = GetCell3D(PredictedPosition[index], SmoothingRadius);
+    uint hash = HashCell3D(cell);
+    uint key = KeyFromHash(hash, ParticleCount);
+
+    SpatialKeys[id.x] = key;
+    SortedIndices[id.x] = id.x;
+    SpatialOffsets[id.x] = ParticleCount; // Reset offsets
+}
+
+RWStructuredBuffer<LavaPoint> SortTarget_Points;
+RWStructuredBuffer<float3> SortTarget_PredictedPositions;
+
+[numthreads(1024, 1, 1)]
+void Reorder(uint3 id : SV_DispatchThreadID) {
+    if (id.x >= ParticleCount)
+    return;
+    uint sortedIndex = SortedIndices[id.x];
+    SortTarget_Points[id.x] = Points[sortedIndex];
+
+    SortTarget_PredictedPositions[id.x] = PredictedPosition[sortedIndex];
+}
+
+[numthreads(1024, 1, 1)]
+void ReorderCopyBack(uint3 id : SV_DispatchThreadID) {
+    if (id.x >= ParticleCount)
+    return;
+
+    Points[id.x] = SortTarget_Points[id.x];
+    PredictedPosition[id.x] = SortTarget_PredictedPositions[id.x];
+}
+
+StructuredBuffer<uint> SortedKeys;
+RWStructuredBuffer<uint> Offsets;
+uint numInputs;
+
+[numthreads(256, 1, 1)]
+void InitializeOffsets(uint3 id : SV_DispatchThreadID) {
+    if (id.x >= numInputs) {
+        return;
+    }
+    Offsets[id.x] = numInputs;
+}
+
+[numthreads(256, 1, 1)]
+void CalculateOffsets(uint3 id : SV_DispatchThreadID) {
+    if (id.x >= numInputs) {
+        return;
+    }
+
+    uint i = id.x;
+    uint null = numInputs;
+
+    uint key = SortedKeys[i];
+    uint keyPrev = i == 0 ? null : SortedKeys[i - 1];
+
+    if (key != keyPrev) {
+        Offsets[key] = i;
     }
 }
