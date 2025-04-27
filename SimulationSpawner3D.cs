@@ -118,7 +118,7 @@ public class SimulationSpawner3D : MonoBehaviour
         int VelocitySize = sizeof(float) * 3;
         int TotalSize = PositionSize + ColorSize + VelocitySize;
         int CurrentKernel = 0;
-        float[] Densities = new float[Points.Length];
+        Vector2[] Densities = new Vector2[Points.Length];
 
         LavaBuffer = new ComputeBuffer(Points.Length, TotalSize);
         LavaBuffer.SetData(Points);
@@ -185,7 +185,7 @@ public class SimulationSpawner3D : MonoBehaviour
         HashesBuffer.GetData(Hashes);
 
         //Cachses Densities to prevent expensive recalculation over and over again
-        ComputeBuffer DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float));
+        ComputeBuffer DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 2);
         DensityBuffer.SetData(Densities);
         CurrentKernel = ComputeShader.FindKernel("DensityCache");
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);

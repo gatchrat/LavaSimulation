@@ -28,7 +28,7 @@ float VoxelSize;
 RWStructuredBuffer<float3> PredictedPosition;
 RWStructuredBuffer<float> DensityValuesBuffer;
 RWTexture3D<float> DensityTexture; // 3D Density Field
-RWStructuredBuffer<float> CachedDensities;
+RWStructuredBuffer<float2> CachedDensities;
 RWStructuredBuffer<float3> VertexBuffer;
 RWStructuredBuffer<int> VertexCount;
 RWStructuredBuffer<float> SDFValues;
@@ -95,8 +95,8 @@ float CalcSharedPressure(float DensityA, float DensityB) {
 float3 CalcPressureForce(int PointID) {
     LavaPoint Point = Points[PointID];
 
-    float Density = CachedDensities[PointID];
-    if(Density == 0) {
+    float2 Density = CachedDensities[PointID];
+    if(Density.x == 0) {
         return float3(0,0,0);
     }
     float3 DirectionalPressure = 0;
@@ -126,9 +126,9 @@ float3 CalcPressureForce(int PointID) {
 
                     if (sqrDstToNeighbour <= sqrRadius) {
                         float3 AbsDirection = Distance > 0 ? Direction / Distance : float3(0, 1,0);
-                        float NeighborDensity = CachedDensities[Index];
+                        float NeighborDensity = CachedDensities[Index].x;
                         float Slope = DerivativeSpikyPow23D(Distance,SmoothingRadius);
-                        float SharedPressure = CalcSharedPressure(Density,NeighborDensity);
+                        float SharedPressure = CalcSharedPressure(Density.x,NeighborDensity);
                         if(NeighborDensity > 0) {
                             DirectionalPressure += AbsDirection*Slope*SharedPressure/NeighborDensity;
                         }
@@ -139,15 +139,15 @@ float3 CalcPressureForce(int PointID) {
             StartIndex++;
         }
     }
-    return float3(DirectionalPressure.x,DirectionalPressure.y,DirectionalPressure.z)/Density;
+    return float3(DirectionalPressure.x,DirectionalPressure.y,DirectionalPressure.z)/Density.x;
 }
 
-//Particles closeby slow me down or speed me up, kinda like friction. Known as Viscosity.
+//Particles closeby slow me down or speed me up, kinda like friction.
 float3 CalcViscosityForce(int PointID) {
     LavaPoint Point = Points[PointID];
 
-    float Density = CachedDensities[PointID];
-    if(Density == 0) {
+    float2 Density = CachedDensities[PointID];
+    if(Density.x == 0) {
         return float3(0,0,0);
     }
     float3 ViscosityForce = 0;
@@ -213,7 +213,7 @@ float3 CalcVelocity (int PointID) {
 
 LavaPoint ReColor(int PointID) {
     LavaPoint Point = Points[PointID];
-    Point.Color =  float4(CachedDensities[PointID],0,0,0);
+    Point.Color =  float4(CachedDensities[PointID].x,0,0,0);
     return Point;
 }
 LavaPoint HandleCollision(LavaPoint Point) {
@@ -264,8 +264,8 @@ void Simulation (uint3 id : SV_DispatchThreadID) {
 }
 //------------------------------------------------------------DENSITY CACHE ---------------------------------------------------------------------------------
 
-float CalcDensity(int PointID) {
-    float Density = 0;
+float2 CalcDensity(int PointID) {
+    float2 Density = (0,0);
     float sqrRadius = SmoothingRadius * SmoothingRadius;
     float3 MyPosition = PredictedPosition[PointID];
 
@@ -290,7 +290,8 @@ float CalcDensity(int PointID) {
                     float Distance = sqrt(sqrDstToNeighbour);
 
                     if (sqrDstToNeighbour <= sqrRadius) {
-                        Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
+                        Density.x+=SpikyKernelPow23D(Distance,SmoothingRadius);
+                        Density.y+=SpikyKernelPow33D(Distance,SmoothingRadius);
                     }
                     //-----------------------------------
                 }
