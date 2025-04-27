@@ -88,7 +88,7 @@ public class SimulationSpawner3D : MonoBehaviour
     }
     void Update()
     {
-        ComputeLava();
+        ComputeLava(Mathf.Min(Time.deltaTime, 1f / 60f));//Run at atleast 60fps, slow down the simulation if framerate not reached to prevent explosion
     }
 
     private void InitLava(int x, int y, int z)
@@ -111,7 +111,7 @@ public class SimulationSpawner3D : MonoBehaviour
         Points[z + y * ZCount + x * ZCount * YCount] = Point;
         densityField = new float[(int)(BoundsWidth / voxelSize), (int)(BoundsHeight / voxelSize), (int)(BoundsDepth / voxelSize)];
     }
-    private void ComputeLava()
+    private void ComputeLava(float TimeStep)
     {
         int PositionSize = sizeof(float) * 3;
         int ColorSize = sizeof(float) * 4;
@@ -193,7 +193,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "StartingIndizes", StartingIndizesBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "CachedDensities", DensityBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
-        ComputeShader.SetFloat("TimePassed", Time.deltaTime);
+        ComputeShader.SetFloat("TimePassed", TimeStep);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
 
         //Calculate Forces and Movement
@@ -209,7 +209,6 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloat("BoundsDepth", BoundsDepth);
         ComputeShader.SetFloat("BoundsWidth", BoundsWidth);
         ComputeShader.SetFloat("ViscosityMultiplier", Viscosity);
-        ComputeShader.SetFloat("TimePassed", Time.deltaTime);
         ComputeShader.SetFloat("TargetDensity", TargetDensity);
         ComputeShader.SetFloat("PressureMultiplier", PressureMultiplier);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 10, 1, 1);
