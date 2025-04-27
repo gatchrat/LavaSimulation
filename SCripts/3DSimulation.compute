@@ -144,16 +144,16 @@ float3 CalcPressureForce(int PointID) {
             if (neighbourKey != key)
             break;
             //-----------------------------------
-            float3 Direction = PredictedPosition[currIndex]-MyPosition;
+            float3 Direction = PredictedPosition[neighbourIndex]-MyPosition;
             float sqrDstToNeighbour = dot(Direction,Direction);
             float Distance = sqrt(sqrDstToNeighbour);
 
             if (sqrDstToNeighbour <= sqrRadius) {
                 float3 AbsDirection = Distance > 0 ? Direction / Distance : float3(0, 1,0);
-                float NeighborDensity = CachedDensities[currIndex].x;
+                float NeighborDensity = CachedDensities[neighbourIndex].x;
                 float Slope = DerivativeSpikyPow23D(Distance,SmoothingRadius);
                 float SharedPressure = CalcSharedPressure(Density.x,NeighborDensity);
-                float NeighborNearDensity = CachedDensities[currIndex].y;
+                float NeighborNearDensity = CachedDensities[neighbourIndex].y;
                 float NearSlope = DerivativeSpikyPow33D(Distance,SmoothingRadius);
                 float NearSharedPressure = CalcSharedNearPressure(Density.y,NeighborNearDensity);
                 if(NeighborDensity > 0) {
@@ -218,7 +218,7 @@ float3 CalcVelocity (int PointID) {
     const float3 Gravity = float3(0,-9.81,0);
     Point.Velocity+=Gravity*TimePassed;
     //F =a/m where m is the density because fluid
-    // Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
+    Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
     //Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
     return Point.Velocity;
 }
@@ -297,7 +297,7 @@ float2 CalcDensity(int PointID) {
             if (neighbourKey != key)
             break;
             //-----------------------------------
-            float3 Direction = PredictedPosition[currIndex]-MyPosition;
+            float3 Direction = PredictedPosition[neighbourIndex]-MyPosition;
             float sqrDstToNeighbour = dot(Direction, Direction);
             float Distance = sqrt(sqrDstToNeighbour);
 
@@ -310,13 +310,13 @@ float2 CalcDensity(int PointID) {
     }
     return Density;
 }
-[numthreads(10,1,1)]
+[numthreads(8,1,1)]
 void DensityCache (uint3 id : SV_DispatchThreadID) {
     LavaPoint CurPoint = Points[id.x];
     CachedDensities[id.x] = CalcDensity(id.x);
 }
 //------------------------------------------------------------DENSITY FIELD ---------------------------------------------------------------------------------
-float CalcDensity(float3 RealPos) {
+float CalcDensitycringe(float3 RealPos) {
     float Density = 0;
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 

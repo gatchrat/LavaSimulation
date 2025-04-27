@@ -436,9 +436,9 @@ MonoBehaviour:
     m_NumColorKeys: 3
     m_NumAlphaKeys: 2
   Renderer: 2
-  XCount: 30
-  YCount: 30
-  ZCount: 30
+  XCount: 32
+  YCount: 32
+  ZCount: 32
   BoundsWidth: 10
   BoundsHeight: 8
   BoundsDepth: 8
@@ -960,7 +960,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!65 &2017910446
 BoxCollider:
   m_ObjectHideFlags: 0

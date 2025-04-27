@@ -101,8 +101,8 @@ public class SimulationSpawner3D : MonoBehaviour
         //Run at atleast 60fps, slow down the simulation if framerate not reached to prevent explosion
         //Run 3 Simulation Steps per frame to improve Timestep size while not being slowed down by the render
         ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
-        //ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
-        //ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
         RenderLava();
     }
 
@@ -176,6 +176,7 @@ public class SimulationSpawner3D : MonoBehaviour
          for (int i = 0; i < StartingIndizes.Length; i++)
              StartingIndizes[i] = 0xFFFFFFFF; // -1 as unsigned*/
         ComputeShader.SetInt("ParticleCount", Points.Length);
+        ComputeShader.SetFloat("SmoothingRadius", SmoothingRadius);
         CurrentKernel = ComputeShader.FindKernel("UpdateSpatialHash");
         ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
@@ -326,9 +327,18 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
-        Debug.Log(Points[1].Velocity);
+
         LavaBuffer.GetData(Points);
         PositionBuffer.GetData(PredictedPositions);
+
+        foreach (var Point in Points)
+        {
+            if (Point.Color.x == 0)
+            {
+                Debug.Log(Point.Position);
+                break;
+            }
+        }
     }
     private void RenderLava()
     {
@@ -373,7 +383,7 @@ public class SimulationSpawner3D : MonoBehaviour
             else
             {
 
-                color = colourMap.Evaluate(p.Color.x / 100);
+                color = colourMap.Evaluate(p.Color.x / 1000);
             }
 
             colors.Add(color);
