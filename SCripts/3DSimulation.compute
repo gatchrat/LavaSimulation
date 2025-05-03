@@ -89,8 +89,10 @@ void ResolveCollisionsSDF(inout float3 pos, inout float3 vel, float collisionDam
         float3 up = calculateSDFNormal(SDF_Offset(pos)); // Richtung zu
         pos -= up *  dstFromSurface;
 
-        vel = -vel;
-        vel *= collisionDamping;
+        if (dot(vel, up) < 0) {
+            vel -= up * dot(up, vel);
+            vel *= collisionDamping;
+        }
     }
 }
 //-----------------------------------------------------------------------------------------------------------------------

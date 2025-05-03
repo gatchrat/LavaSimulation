@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System;
 using System.Runtime.InteropServices;
+using UnityEngine.Experimental.Rendering;
 
 public struct HashEntry
 {
@@ -298,6 +299,7 @@ public class SimulationSpawner3D : MonoBehaviour
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
         PositionBuffer.Dispose();
+        SDFTexture.Release();
         //        HashesBuffer.Dispose();
         // StartingIndizesBuffer.Dispose();
     }
@@ -481,13 +483,14 @@ public class SimulationSpawner3D : MonoBehaviour
 
     private void LoadSDF()
     {
-        SDFTexture = new RenderTexture(30, 30, 0, RenderTextureFormat.RFloat)
+        SDFTexture = new RenderTexture(30, 30, 0)
         {
             dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
             volumeDepth = 30,
             enableRandomWrite = true,
             wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Bilinear
+            filterMode = FilterMode.Bilinear,
+            graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
         };
         SDFTexture.Create();
 
