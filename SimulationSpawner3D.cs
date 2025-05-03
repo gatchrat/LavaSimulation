@@ -20,10 +20,11 @@ public class SimulationSpawner3D : MonoBehaviour
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     public ComputeShader ComputeShader;
-
+    ComputeBuffer argsBuffer;
     public MeshFilter LavaGeneratedMesh;
     public Gradient colourMap;
     public RenderMode Renderer;
+    public Shader BilboardShader;
     public int XCount;
     public int YCount;
     public int ZCount;
@@ -349,7 +350,7 @@ public class SimulationSpawner3D : MonoBehaviour
     private void RenderLavaNormal()
     {
         // Render in batches of 1023 (Unity limitation)
-        matrices.Clear();
+        /*matrices.Clear();
         colors.Clear();
         //        Debug.Log(Points[0].Color.x);
         foreach (var p in Points)
@@ -374,7 +375,30 @@ public class SimulationSpawner3D : MonoBehaviour
             props.Clear();
             props.SetVectorArray("_Color", colors.GetRange(i, count));
             Graphics.DrawMeshInstanced(Mesh, 0, Material, matrices.GetRange(i, count), props);
-        }
+        }*/
+        Bounds bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
+        Mesh mesh = GenerateQuadMesh();
+        argsBuffer = new ComputeBuffer(10, 4);
+        CreateArgsBuffer(ref argsBuffer, mesh, Points.Length);
+
+
+        Material mat = new Material(BilboardShader);
+        Texture2D gradientTexture = Texture2D.blackTexture;
+        TextureFromGradient(ref gradientTexture, 10, colourMap);
+        mat.SetTexture("ColourMap", gradientTexture);
+
+
+        mat.SetFloat("scale", 1 * 0.05f);
+        mat.SetFloat("velocityMax", 10);
+        mat.SetBuffer("Points", LavaBuffer);
+
+        Vector3 s = transform.localScale;
+        transform.localScale = Vector3.one;
+        var localToWorld = transform.localToWorldMatrix;
+        transform.localScale = s;
+
+        mat.SetMatrix("localToWorld", localToWorld);
+        Graphics.DrawMeshInstancedIndirect(mesh, 0, mat, bounds, argsBuffer);
     }
     private void RenderLavaByHash()
     {
@@ -540,7 +564,7 @@ public class SimulationSpawner3D : MonoBehaviour
         SDFTexture.Create();
 
         float[] SDFValues = new float[30 * 30 * 30];
-        TextAsset mytxtData = Resources.Load<TextAsset>("EarthSDF_30");
+        TextAsset mytxtData = Resources.Load<TextAsset>("Volcano_SDF30");
         string txt = mytxtData.text;
         string[] Values = txt.Split(' ');
         Debug.Log("Loaded: " + Values.Length);
@@ -583,6 +607,64 @@ public class SimulationSpawner3D : MonoBehaviour
         mesh.SetTriangles(indices, 0, true);
         mesh.SetUVs(0, uvs);
         return mesh;
+    }
+    public static void TextureFromGradient(ref Texture2D texture, int width, Gradient gradient, FilterMode filterMode = FilterMode.Bilinear)
+    {
+        if (texture == null)
+        {
+            texture = new Texture2D(width, 1);
+        }
+        else if (texture.width != width)
+        {
+            texture.Reinitialize(width, 1);
+        }
+
+        if (gradient == null)
+        {
+            gradient = new Gradient();
+            gradient.SetKeys(
+                new GradientColorKey[] { new(Color.black, 0), new(Color.black, 1) },
+                new GradientAlphaKey[] { new(1, 0), new(1, 1) }
+            );
+        }
+
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.filterMode = filterMode;
+
+        Color[] cols = new Color[width];
+        for (int i = 0; i < cols.Length; i++)
+        {
+            float t = i / (cols.Length - 1f);
+            cols[i] = gradient.Evaluate(t);
+        }
+
+        texture.SetPixels(cols);
+        texture.Apply();
+    }
+    public static void CreateArgsBuffer(ref ComputeBuffer argsBuffer, Mesh mesh, int numInstances)
+    {
+        const int stride = sizeof(uint);
+        const int numArgs = 5;
+        const int subMeshIndex = 0;
+        uint[] argsBufferArray = new uint[5];
+
+        bool createNewBuffer = argsBuffer == null || !argsBuffer.IsValid() || argsBuffer.count != argsBufferArray.Length || argsBuffer.stride != stride;
+        if (createNewBuffer)
+        {
+            argsBuffer.Dispose();
+            argsBuffer = new ComputeBuffer(numArgs, stride, ComputeBufferType.IndirectArguments);
+        }
+
+        lock (argsBufferArray)
+        {
+            argsBufferArray[0] = (uint)mesh.GetIndexCount(subMeshIndex);
+            argsBufferArray[1] = (uint)numInstances;
+            argsBufferArray[2] = (uint)mesh.GetIndexStart(subMeshIndex);
+            argsBufferArray[3] = (uint)mesh.GetBaseVertex(subMeshIndex);
+            argsBufferArray[4] = 0; // offset
+
+            argsBuffer.SetData(argsBufferArray);
+        }
     }
     ///////////////////////////////
 }

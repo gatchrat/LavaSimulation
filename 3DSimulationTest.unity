@@ -436,6 +436,7 @@ MonoBehaviour:
     m_NumColorKeys: 3
     m_NumAlphaKeys: 2
   Renderer: 2
+  BilboardShader: {fileID: 4800000, guid: ec757a1459302f348a71e580d5dda655, type: 3}
   XCount: 32
   YCount: 32
   ZCount: 32

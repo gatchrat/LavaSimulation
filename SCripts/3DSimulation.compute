@@ -258,7 +258,7 @@ LavaPoint HandleCollision(LavaPoint Point) {
     float3 Position = Point.Position;
     float3 Velocity = Point.Velocity;
 
-    ResolveCollisionsSDF(Position, Velocity,EnergyLossOnCollision);
+    //ResolveCollisionsSDF(Position, Velocity,EnergyLossOnCollision);
 
     Point.Position = Position;
     Point.Velocity = Velocity;
