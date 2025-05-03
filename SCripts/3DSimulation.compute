@@ -33,6 +33,10 @@ int FieldWidth;
 int FieldHeight;
 int FieldDepth;
 float VoxelSize;
+//SDF
+float SDF_OffSetX;
+float SDF_OffSetY;
+float SDF_OffSetZ;
 RWStructuredBuffer<float3> PredictedPosition;
 RWStructuredBuffer<float> DensityValuesBuffer;
 RWTexture3D<float> DensityTexture; // 3D Density Field
@@ -75,19 +79,18 @@ float3 calculateSDFNormal(float3 pos) {
 
     return normalize(float3(dx, dy, dz));
 }
-
+float3 SDF_Offset(float3 pos) {
+    return pos - float3(SDF_OffSetX,SDF_OffSetY,SDF_OffSetZ);
+}
 void ResolveCollisionsSDF(inout float3 pos, inout float3 vel, float collisionDamping) {
-    float dstFromSurface = SampleSDF(pos);
+    float dstFromSurface = SampleSDF(SDF_Offset(pos));
 
     if (dstFromSurface < 0) {
-        float3 up = calculateSDFNormal(pos);
-        pos -= up * min(0, dstFromSurface);
+        float3 up = calculateSDFNormal(SDF_Offset(pos)); // Richtung zu
+        pos -= up *  dstFromSurface;
 
-        if (dot(vel, up) < 0) {
-            vel -= up * dot(up, vel);
-            vel *= collisionDamping;
-        }
-        //pos = (0,0,0);
+        vel = -vel;
+        vel *= collisionDamping;
     }
 }
 //-----------------------------------------------------------------------------------------------------------------------
@@ -177,36 +180,35 @@ float3 CalcViscosityForce(int PointID) {
     float sqrRadius = SmoothingRadius * SmoothingRadius;
 
     float3 MyPosition = PredictedPosition[PointID];
+    int3 originCell = GetCell3D(MyPosition, SmoothingRadius);
 
-    for(uint i = 0; i<27;i++) {
-        float3 CheckPos = OffSetPosition(MyPosition,i);
-        uint CheckHash = CalcHash(CheckPos+float3(10,0,10));//Move Pos to always be positive
-        uint StartIndex = StartingIndizes[CheckHash];
-        if(StartIndex== 0xFFFFFFFF) {
+    for (int i = 0; i < 27; i++) {
+        uint hash = HashCell3D(originCell + offsets3D[i]);
+        uint key = KeyFromHash(hash, ParticleCount);
+        uint currIndex = SpatialOffsets[key];
+        while (currIndex < ParticleCount) {
+            uint neighbourIndex = currIndex;
+            currIndex++;
+
+            // Skip if looking at self
+            if (neighbourIndex == PointID)
             continue;
-        }
-        while(StartIndex < ParticleCount) {
-            //Check if still checking in the right hashgroup
-            if(Hashes[StartIndex].hash != CheckHash) {
-                break;
-            }
-            if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
-                uint Index = Hashes[StartIndex].index;
-                if(Index != PointID) {
-                    //-----------------------------------
-                    float3 Direction = PredictedPosition[Index]-MyPosition;
-                    float sqrDstToNeighbour = dot(Direction,Direction);
-                    float Distance = sqrt(sqrDstToNeighbour);
 
-                    if (sqrDstToNeighbour <= sqrRadius) {
-                        float3 NeighborVelocity = Points[Index].Velocity;
-                        float Influence = SmoothingKernelPoly63D(Distance,SmoothingRadius);
-                        ViscosityForce += (NeighborVelocity-Point.Velocity)*Influence;
-                    }
-                    //-----------------------------------
-                }
+            uint neighbourKey = SpatialKeys[neighbourIndex];
+            // Exit if no longer looking at correct bin
+            if (neighbourKey != key)
+            break;
+            //-----------------------------------
+            float3 Direction = PredictedPosition[neighbourIndex]-MyPosition;
+            float sqrDstToNeighbour = dot(Direction,Direction);
+            float Distance = sqrt(sqrDstToNeighbour);
+
+            if (sqrDstToNeighbour <= sqrRadius) {
+                float3 NeighborVelocity = Points[neighbourIndex].Velocity;
+                float Influence = SmoothingKernelPoly63D(Distance,SmoothingRadius);
+                ViscosityForce += (NeighborVelocity-Point.Velocity)*Influence;
             }
-            StartIndex++;
+            //-----------------------------------
         }
     }
     return float3(ViscosityForce.x,ViscosityForce.y,ViscosityForce.z)*ViscosityMultiplier;
@@ -218,7 +220,7 @@ float3 CalcVelocity (int PointID) {
     Point.Velocity+=Gravity*TimePassed;
     //F =a/m where m is the density because fluid
     Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
-    //Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
+    Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
     return Point.Velocity;
 }
 
@@ -258,7 +260,7 @@ LavaPoint HandleCollision(LavaPoint Point) {
     float3 Position = Point.Position;
     float3 Velocity = Point.Velocity;
 
-    //ResolveCollisionsSDF(Position, Velocity,EnergyLossOnCollision);
+    ResolveCollisionsSDF(Position, Velocity,EnergyLossOnCollision);
 
     Point.Position = Position;
     Point.Velocity = Velocity;
