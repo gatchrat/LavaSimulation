@@ -251,7 +251,7 @@ public class SimulationSpawner3D : MonoBehaviour
 
         //Calculate Forces and Movement
         CurrentKernel = ComputeShader.FindKernel("Simulation");
-        ComputeShader.SetTexture(CurrentKernel, "SDFTexture", SDFTexture);
+        ComputeShader.SetTexture(CurrentKernel, "SDFReadTexture", SDFTexture);
         ComputeShader.SetBuffer(CurrentKernel, "CachedDensities", DensityBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
@@ -491,7 +491,8 @@ public class SimulationSpawner3D : MonoBehaviour
             enableRandomWrite = true,
             wrapMode = TextureWrapMode.Clamp,
             filterMode = FilterMode.Bilinear,
-            graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat
+            graphicsFormat = GraphicsFormat.R32G32B32A32_SFloat,
+            useMipMap = false
         };
         SDFTexture.Create();
 

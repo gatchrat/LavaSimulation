@@ -603,7 +603,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ComputeShader: {fileID: 7200000, guid: 9356205ead5810e4c95012b5ec7abb9b, type: 3}
-  LavaGenerator: {fileID: 0}
+  LavaGenerator: {fileID: 58217549}
   LavaGeneratedMesh: {fileID: 2017910448}
   colourMap:
     serializedVersion: 2

@@ -56,14 +56,19 @@ StructuredBuffer<int> TriTable;       // 256 * 16 entries
 
 //--------Slightly adapted from: https://github.com/SebLague/Fluid-Planet/blob/main/Assets/Scripts/Simulation/Compute/FluidSim.compute
 RWTexture3D<float> SDFTexture;
+Texture3D<float4> SDFReadTexture;
 uint3 SDFSize;
 SamplerState linearClampSampler;
 
 const float4x4 sdfWorldToLocalMatrix;
 float SampleSDF(float3 posWorld) {
-    posWorld = posWorld + (BoundsWidth/2,0,BoundsDepth/2); // Undo the bounds offset
-    posWorld = posWorld / (BoundsWidth/SDFSize.x,BoundsHeight/SDFSize.y, BoundsDepth/SDFSize.z); // Scale the Bounds value to fit inside the SDF Bounds, both should have same Verhältnisse
-    float dstFromSurface = SDFTexture[posWorld];
+    float3 sdfWorldSize = float3(30,30,30);
+    // posWorld = posWorld + (BoundsWidth/2,0,BoundsDepth/2); // Undo the bounds offset
+    // posWorld = posWorld / (BoundsWidth/SDFSize.x,BoundsHeight/SDFSize.y, BoundsDepth/SDFSize.z); // Scale the Bounds value to fit inside the SDF Bounds, both should have same Verhältnisse
+
+    float3 uvw = (posWorld + sdfWorldSize / 2) / sdfWorldSize;
+    float dstFromSurface = SDFReadTexture.SampleLevel(linearClampSampler, uvw, 0).r;
+    // float dstFromSurface = SDFTexture[posWorld];
     return dstFromSurface;
 }
 
@@ -81,7 +86,7 @@ float3 calculateSDFNormal(float3 pos) {
 }
 float3 WorldToSDF(float3 pos) {
     pos = pos - float3(SDF_OffSet.x,SDF_OffSet.y,SDF_OffSet.z);
-    float3 tempScale = SDF_Scale; //Till i figure iout how to do the sdf at 1 scale
+    float3 tempScale = SDF_Scale*0.333333; //Till i figure iout how to do the sdf at 1 scale
     pos = float3(pos.x/tempScale.x,pos.y/tempScale.y,pos.z/tempScale.z);
     return pos;
 }
@@ -90,8 +95,7 @@ void ResolveCollisionsSDF(inout float3 pos, inout float3 vel, float collisionDam
 
     if (dstFromSurface < 0) {
         float3 up = calculateSDFNormal(WorldToSDF(pos)); // Richtung zu
-        pos -= up *  dstFromSurface;
-
+        pos -= up * min(0, dstFromSurface);
         if (dot(vel, up) < 0) {
             vel -= up * dot(up, vel);
             vel *= collisionDamping;
