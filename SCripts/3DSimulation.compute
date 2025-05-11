@@ -236,6 +236,9 @@ LavaPoint ReColor(int PointID) {
 }
 
 LavaPoint HandleCollision(LavaPoint Point) {
+    if(Point.active == 0) {
+        return Point;
+    }
     const float EnergyLossOnCollision = 0.5f;
     const float EnergyLossOnCollisionFloor = 0.7f;
     if (Point.Position.y < 0) {
@@ -276,6 +279,9 @@ LavaPoint HandleCollision(LavaPoint Point) {
 [numthreads(8,1,1)]
 void Simulation (uint3 id : SV_DispatchThreadID) {
     LavaPoint CurPoint = Points[id.x];
+    if(CurPoint.active == 0) {
+        return;
+    }
     CurPoint = ReColor(id.x);
     CurPoint.Velocity = CalcVelocity(id.x);
     CurPoint.Position = CalcPosition(CurPoint);
@@ -287,6 +293,7 @@ void Activate (uint3 id : SV_DispatchThreadID) {
         if(Points[i].active == 0) {
             Points[i].active = 1;
             Points[i].Position = float3(0,0.5,0);
+            Points[i].Velocity = float3(0,0,0);
             return;
         }
     }

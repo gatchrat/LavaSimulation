@@ -67,7 +67,7 @@ public class LavaGenerator : MonoBehaviour
                         active = 0
                     };
 
-                    Point.Position = new Vector3(99, 99, 99);
+                    Point.Position = new Vector3((-XCount / 2 + x) * 0.15f, y * 0.15f + 0.5f, (-ZCount / 2 + z) * 0.15f) + new Vector3(99, 99, 99);
 
                     Points[z + y * ZCount + x * ZCount * YCount] = Point;
                 }

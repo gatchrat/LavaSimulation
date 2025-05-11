@@ -162,10 +162,14 @@ public class SimulationSpawner3D : MonoBehaviour
     private void ComputeLava(float TimeStep)
     {
         int CurrentKernel = 0;
-        /* CurrentKernel = ComputeShader.FindKernel("Activate");
-         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
-         ComputeShader.SetFloat("TimePassed", TimeStep);
-         ComputeShader.Dispatch(CurrentKernel, 1, 1, 1);*/
+        if (SpawnMode == SpawnMode.Flow)
+        {
+            CurrentKernel = ComputeShader.FindKernel("Activate");
+            ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+            ComputeShader.SetFloat("TimePassed", TimeStep);
+            ComputeShader.Dispatch(CurrentKernel, 1, 1, 1);
+        }
+
 
         CurrentKernel = ComputeShader.FindKernel("PredictPositions");
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
