@@ -193,7 +193,7 @@ public class SimulationSpawner3D : MonoBehaviour
         // Launch each step of the sorting algorithm (once the previous step is complete)
         // Number of steps = [log2(n) * (log2(n) + 1)] / 2
         // where n = nearest power of 2 that is greater or equal to the number of inputs
-        int numStages = (int)Math.Log(Points.Length, 2); //POINTS LENGTH MUSS POW OF 2 SEIN???
+        int numStages = (int)Math.Log(Mathf.NextPowerOfTwo(Points.Length), 2); //POINTS LENGTH MUSS POW OF 2 SEIN???
         ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
         for (int stageIndex = 0; stageIndex < numStages; stageIndex++)
