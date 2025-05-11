@@ -34,9 +34,8 @@ int FieldHeight;
 int FieldDepth;
 float VoxelSize;
 //SDF
-float SDF_OffSetX;
-float SDF_OffSetY;
-float SDF_OffSetZ;
+float3 SDF_OffSet;
+float3 SDF_Scale;
 RWStructuredBuffer<float3> PredictedPosition;
 RWStructuredBuffer<float> DensityValuesBuffer;
 RWTexture3D<float> DensityTexture; // 3D Density Field
@@ -79,14 +78,17 @@ float3 calculateSDFNormal(float3 pos) {
 
     return normalize(float3(dx, dy, dz));
 }
-float3 SDF_Offset(float3 pos) {
-    return pos - float3(SDF_OffSetX,SDF_OffSetY,SDF_OffSetZ);
+float3 WorldToSDF(float3 pos) {
+    pos = pos - float3(SDF_OffSet.x,SDF_OffSet.y,SDF_OffSet.z);
+    float3 tempScale = SDF_Scale; //Till i figure iout how to do the sdf at 1 scale
+    pos = float3(pos.x/tempScale.x,pos.y/tempScale.y,pos.z/tempScale.z);
+    return pos;
 }
 void ResolveCollisionsSDF(inout float3 pos, inout float3 vel, float collisionDamping) {
-    float dstFromSurface = SampleSDF(SDF_Offset(pos));
+    float dstFromSurface = SampleSDF(WorldToSDF(pos));
 
     if (dstFromSurface < 0) {
-        float3 up = calculateSDFNormal(SDF_Offset(pos)); // Richtung zu
+        float3 up = calculateSDFNormal(WorldToSDF(pos)); // Richtung zu
         pos -= up *  dstFromSurface;
 
         if (dot(vel, up) < 0) {

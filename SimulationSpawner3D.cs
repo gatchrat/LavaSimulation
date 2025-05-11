@@ -51,10 +51,8 @@ public class SimulationSpawner3D : MonoBehaviour
     public float voxelSize = 0.1f;
 
     [Header("SDF Settings")]
-    public float SDF_scale = 1f;
-    public float SDF_XPos = 0f;
-    public float SDF_YPos = 0f;
-    public float SDF_ZPos = 0f;
+    public Vector3 SDF_scale = new Vector3(1f, 1f, 1f);
+    public Vector3 SDF_Pos = new Vector3(0f, 0f, 0f);
 
     float[,,] densityField;
     ComputeBuffer LavaBuffer;
@@ -266,9 +264,8 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloat("TargetDensity", TargetDensity);
         ComputeShader.SetFloat("PressureMultiplier", PressureMultiplier);
         ComputeShader.SetFloat("NearPressureMultiplier", NearPressureMultiplier);
-        ComputeShader.SetFloat("SDF_OffSetX", SDF_XPos);
-        ComputeShader.SetFloat("SDF_OffSetY", SDF_YPos);
-        ComputeShader.SetFloat("SDF_OffSetZ", SDF_ZPos);
+        ComputeShader.SetFloats("SDF_OffSet", SDF_Pos.x, SDF_Pos.y, SDF_Pos.z);
+        ComputeShader.SetFloats("SDF_Scale", SDF_scale.x, SDF_scale.y, SDF_scale.z);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
@@ -300,6 +297,9 @@ public class SimulationSpawner3D : MonoBehaviour
         DensityBuffer.Dispose();
         PositionBuffer.Dispose();
         SDFTexture.Release();
+        spatialKeys.Dispose();
+        spatialOffsets.Dispose();
+        sortedIndices.Dispose();
         //        HashesBuffer.Dispose();
         // StartingIndizesBuffer.Dispose();
     }
@@ -329,6 +329,7 @@ public class SimulationSpawner3D : MonoBehaviour
 
         mat.SetMatrix("localToWorld", localToWorld);
         Graphics.DrawMeshInstancedIndirect(mesh, 0, mat, bounds, argsBuffer);
+        argsBuffer.Release();
     }
     private void RenderLavaByHash()
     {
