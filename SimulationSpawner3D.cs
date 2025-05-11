@@ -300,7 +300,10 @@ public class SimulationSpawner3D : MonoBehaviour
         spatialKeys.Dispose();
         spatialOffsets.Dispose();
         sortedIndices.Dispose();
-        //        HashesBuffer.Dispose();
+        argsBuffer.Release();
+        sortTarget_PointsBuffer.Dispose();
+        sortTarget_predictedPositionsBuffer.Dispose();
+        //      HashesBuffer.Dispose();
         // StartingIndizesBuffer.Dispose();
     }
     //----------------------------------RENDERER------------------------------------------
@@ -329,7 +332,6 @@ public class SimulationSpawner3D : MonoBehaviour
 
         mat.SetMatrix("localToWorld", localToWorld);
         Graphics.DrawMeshInstancedIndirect(mesh, 0, mat, bounds, argsBuffer);
-        argsBuffer.Release();
     }
     private void RenderLavaByHash()
     {
