@@ -20,6 +20,7 @@ Shader "Fluid/ParticleBillboard" {
                  float3 Position;
                  float3 Velocity;
                  float4 Color;
+				 int active;
             };
 			StructuredBuffer<LavaPoint> Points;
 			Texture2D<float4> ColourMap;

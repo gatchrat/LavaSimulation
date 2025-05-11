@@ -6,7 +6,8 @@ struct LavaPoint {
     float3 Position;
     float3 Velocity;
     float4 Color;
-};
+    int active;
+}; 
 struct HashEntry {
     uint hash;  
     uint index;

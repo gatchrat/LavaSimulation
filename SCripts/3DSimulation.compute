@@ -13,7 +13,8 @@
 #pragma kernel Reorder
 #pragma kernel SortHashesNeu
 #pragma kernel InitializeOffsets
-#pragma kernel  CalculateOffsets
+#pragma kernel  CalculateOffsets 
+#pragma kernel Activate
 
 #include "./Tools.compute"
 #include "./SpatialHash3D.compute"
@@ -279,6 +280,16 @@ void Simulation (uint3 id : SV_DispatchThreadID) {
     CurPoint.Velocity = CalcVelocity(id.x);
     CurPoint.Position = CalcPosition(CurPoint);
     Points[id.x] = HandleCollision(CurPoint);
+} 
+[numthreads(1,1,1)]
+void Activate (uint3 id : SV_DispatchThreadID) {
+    for(int i = 0; i < ParticleCount; i++) {
+        if(Points[i].active == 0) {
+            Points[i].active = 1;
+            Points[i].Position = float3(0,0.5,0);
+            return;
+        }
+    }
 }
 //------------------------------------------------------------DENSITY CACHE ---------------------------------------------------------------------------------
 

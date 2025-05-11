@@ -28,6 +28,7 @@ public struct LavaPoint
     public Vector3 Position;
     public Vector3 Velocity;
     public Vector4 Color;
+    public int active;
 };
 public class SimulationSpawner3D : MonoBehaviour
 {
@@ -126,8 +127,8 @@ public class SimulationSpawner3D : MonoBehaviour
             case SpawnMode.AtOnceRandom:
                 Points = LavaGenerator.SpawnLavaAtOnceRandom(XCount, YCount, ZCount, BoundsWidth, BoundsHeight, BoundsDepth);
                 break;
-            default:
-                LavaGenerator.SpawnLavaAtOnce(XCount, YCount, ZCount);
+            case SpawnMode.Flow:
+                Points = LavaGenerator.InitInactive(XCount, YCount, ZCount);
                 break;
         }
 
@@ -138,7 +139,7 @@ public class SimulationSpawner3D : MonoBehaviour
         int PositionSize = sizeof(float) * 3;
         int ColorSize = sizeof(float) * 4;
         int VelocitySize = sizeof(float) * 3;
-        int TotalSize = PositionSize + ColorSize + VelocitySize;
+        int TotalSize = PositionSize + ColorSize + VelocitySize + sizeof(int);
 
         Vector2[] Densities = new Vector2[Points.Length];
         DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 2);
@@ -161,6 +162,11 @@ public class SimulationSpawner3D : MonoBehaviour
     private void ComputeLava(float TimeStep)
     {
         int CurrentKernel = 0;
+        /* CurrentKernel = ComputeShader.FindKernel("Activate");
+         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+         ComputeShader.SetFloat("TimePassed", TimeStep);
+         ComputeShader.Dispatch(CurrentKernel, 1, 1, 1);*/
+
         CurrentKernel = ComputeShader.FindKernel("PredictPositions");
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
