@@ -16,7 +16,14 @@ public enum RenderMode
     ByDensity,
     AsMesh
 }
-struct LavaPoint
+public enum SpawnMode
+{
+    AtOnce,
+    AtOnceRandom,
+    Flow
+}
+
+public struct LavaPoint
 {
     public Vector3 Position;
     public Vector3 Velocity;
@@ -26,10 +33,12 @@ public class SimulationSpawner3D : MonoBehaviour
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     public ComputeShader ComputeShader;
+    public LavaGenerator LavaGenerator;
     ComputeBuffer argsBuffer;
     public MeshFilter LavaGeneratedMesh;
     public Gradient colourMap;
     public RenderMode Renderer;
+    public SpawnMode SpawnMode;
     public Shader BilboardShader;
     public int XCount;
     public int YCount;
@@ -43,7 +52,6 @@ public class SimulationSpawner3D : MonoBehaviour
     public float SmoothingRadius = 10f;
     private Mesh Mesh;
     public Material Material;
-    public Boolean RandomSpawns = false;
     public float Viscosity = 1f;
     public float isoLevel = 0.3f;
 
@@ -57,12 +65,8 @@ public class SimulationSpawner3D : MonoBehaviour
     float[,,] densityField;
     ComputeBuffer LavaBuffer;
     Vector3[] PredictedPositions;
-    private float BoundsWidthAtStart;
-    private float BoundsDepthAtStart;
     private RenderTexture SDFTexture;
     private ComputeBuffer PositionBuffer;
-    private ComputeBuffer StartingIndizesBuffer;
-    private ComputeBuffer HashesBuffer;
     private ComputeBuffer DensityBuffer;
     public ComputeBuffer spatialKeys { get; private set; }
     public ComputeBuffer spatialOffsets { get; private set; }
@@ -83,20 +87,7 @@ public class SimulationSpawner3D : MonoBehaviour
     {
         LoadSDF();
 
-        BoundsWidthAtStart = BoundsWidth;
-        BoundsDepthAtStart = BoundsDepth;
-
-        Points = new LavaPoint[XCount * YCount * ZCount];
-        for (int x = 0; x < XCount; x++)
-        {
-            for (int y = 0; y < YCount; y++)
-            {
-                for (int z = 0; z < ZCount; z++)
-                {
-                    InitLava(x, y, z);
-                }
-            }
-        }
+        InitLava();
 
         PredictedPositions = new Vector3[Points.Length];
         props = new MaterialPropertyBlock();
@@ -125,24 +116,21 @@ public class SimulationSpawner3D : MonoBehaviour
         DisposeBuffers();
     }
 
-    private void InitLava(int x, int y, int z)
+    private void InitLava()
     {
-        LavaPoint Point = new LavaPoint
+        switch (SpawnMode)
         {
-            Color = Color.white
-        };
-        if (!RandomSpawns)
-        {
-            Point.Position = new Vector3((-XCount / 2 + x) * 0.15f, y * 0.15f + 0.5f, (-ZCount / 2 + z) * 0.15f);
+            case SpawnMode.AtOnce:
+                Points = LavaGenerator.SpawnLavaAtOnce(XCount, YCount, ZCount);
+                break;
+            case SpawnMode.AtOnceRandom:
+                Points = LavaGenerator.SpawnLavaAtOnceRandom(XCount, YCount, ZCount, BoundsWidth, BoundsHeight, BoundsDepth);
+                break;
+            default:
+                LavaGenerator.SpawnLavaAtOnce(XCount, YCount, ZCount);
+                break;
         }
-        else
-        {
-            Point.Position = new Vector3(
-                UnityEngine.Random.Range(-BoundsWidth / 2, BoundsWidth / 2) * 0.1f,
-                UnityEngine.Random.Range(0, BoundsHeight) * 0.1f,
-                UnityEngine.Random.Range(-BoundsDepth / 2, BoundsDepth / 2) * 0.1f);
-        }
-        Points[z + y * ZCount + x * ZCount * YCount] = Point;
+
         densityField = new float[(int)(BoundsWidth / voxelSize), (int)(BoundsHeight / voxelSize), (int)(BoundsDepth / voxelSize)];
     }
     void InitBuffers()
