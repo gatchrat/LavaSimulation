@@ -490,19 +490,19 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.33334
+      value: 0.50001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.33334
+      value: 0.50001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.33334
+      value: 0.50001
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -0.15
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalPosition.y
@@ -652,8 +652,8 @@ MonoBehaviour:
   Viscosity: 0.5
   isoLevel: 1
   voxelSize: 0.1
-  SDF_scale: {x: 1, y: 1, z: 1}
-  SDF_Pos: {x: 0, y: 0, z: 0}
+  SDF_scale: {x: 1.5, y: 1.5, z: 1.5}
+  SDF_Pos: {x: -0.15, y: 0, z: 0}
 --- !u!114 &277898295
 MonoBehaviour:
   m_ObjectHideFlags: 0

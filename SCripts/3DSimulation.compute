@@ -86,7 +86,7 @@ float3 calculateSDFNormal(float3 pos) {
 }
 float3 WorldToSDF(float3 pos) {
     pos = pos - float3(SDF_OffSet.x,SDF_OffSet.y,SDF_OffSet.z);
-    float3 tempScale = SDF_Scale*0.333333; //Till i figure iout how to do the sdf at 1 scale
+    float3 tempScale = SDF_Scale*0.3; //Till i figure iout how to do the sdf at 1 scale
     pos = float3(pos.x/tempScale.x,pos.y/tempScale.y,pos.z/tempScale.z);
     return pos;
 }
