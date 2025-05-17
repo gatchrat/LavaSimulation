@@ -63,12 +63,8 @@ SamplerState linearClampSampler;
 const float4x4 sdfWorldToLocalMatrix;
 float SampleSDF(float3 posWorld) {
     float3 sdfWorldSize = float3(30,30,30);
-    // posWorld = posWorld + (BoundsWidth/2,0,BoundsDepth/2); // Undo the bounds offset
-    // posWorld = posWorld / (BoundsWidth/SDFSize.x,BoundsHeight/SDFSize.y, BoundsDepth/SDFSize.z); // Scale the Bounds value to fit inside the SDF Bounds, both should have same Verhältnisse
-
     float3 uvw = (posWorld + sdfWorldSize / 2) / sdfWorldSize;
     float dstFromSurface = SDFReadTexture.SampleLevel(linearClampSampler, uvw, 0).r;
-    // float dstFromSurface = SDFTexture[posWorld];
     return dstFromSurface;
 }
 
@@ -282,6 +278,9 @@ LavaPoint HandleCollision(LavaPoint Point) {
 
 [numthreads(8,1,1)]
 void Simulation (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= ParticleCount) {
+        return;
+    }
     LavaPoint CurPoint = Points[id.x];
     if(CurPoint.active == 0) {
         return;
@@ -338,6 +337,9 @@ float2 CalcDensity(int PointID) {
 }
 [numthreads(8,1,1)]
 void DensityCache (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= ParticleCount) {
+        return;
+    }
     LavaPoint CurPoint = Points[id.x];
     CachedDensities[id.x] = CalcDensity(id.x);
 }
@@ -419,6 +421,9 @@ float3 PredictPosition(int PointID) {
 }
 [numthreads(1024,1,1)]
 void PredictPositions (uint3 id : SV_DispatchThreadID) {
+    if (id.x >= ParticleCount) {
+        return;
+    }
     PredictedPosition[id.x] = PredictPosition(id.x);
 }
 //------------------------------------------------------------LOAD SDF---------------------------------------------------------------------------------
