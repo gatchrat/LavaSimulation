@@ -83,6 +83,8 @@ public class SimulationSpawner3D : MonoBehaviour
     private HashEntry[] Hashes;
     private int NumOfPossibleHashes;
     private uint[] StartingIndizes;
+    private int SDFValueCount;
+    private float SDFSize;
 
 
     void Start()
@@ -133,7 +135,7 @@ public class SimulationSpawner3D : MonoBehaviour
                 break;
         }
 
-        densityField = new float[(int)(BoundsWidth / voxelSize), (int)(BoundsHeight / voxelSize), (int)(BoundsDepth / voxelSize)];
+        //        densityField = new float[(int)(BoundsWidth / voxelSize), (int)(BoundsHeight / voxelSize), (int)(BoundsDepth / voxelSize)];
     }
     void InitBuffers()
     {
@@ -289,6 +291,8 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloat("NearPressureMultiplier", NearPressureMultiplier);
         ComputeShader.SetFloats("SDF_OffSet", SDF_Pos.x, SDF_Pos.y, SDF_Pos.z);
         ComputeShader.SetFloats("SDF_Scale", SDF_scale.x, SDF_scale.y, SDF_scale.z);
+        ComputeShader.SetInts("SDFValueCount", SDFValueCount, SDFValueCount, SDFValueCount);
+        ComputeShader.SetFloats("SDFSize", SDFSize, SDFSize, SDFSize);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         if (getData)
@@ -512,9 +516,9 @@ public class SimulationSpawner3D : MonoBehaviour
         TextAsset mytxtData = Resources.Load<TextAsset>(SDFFileName);
         string txt = mytxtData.text;
         string[] Values = txt.Split(' ');
-        int SDFValueCount = int.Parse(Values[0]);
-        Debug.Log(Values[3]);
-        float SDFSize = float.Parse(Values[3]);
+        SDFValueCount = int.Parse(Values[0]);
+        Debug.Log(SDFValueCount);
+        SDFSize = float.Parse(Values[3]);
 
         SDFTexture = new RenderTexture(SDFValueCount, SDFValueCount, 0)
         {
@@ -543,7 +547,8 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetTexture(CurrentKernel, "SDFTexture", SDFTexture);
         ComputeShader.SetInts("SDFValueCount", SDFValueCount, SDFValueCount, SDFValueCount);
         ComputeShader.SetFloats("SDFSize", SDFSize, SDFSize, SDFSize);
-        ComputeShader.Dispatch(CurrentKernel, 10, 10, 10);
+        ComputeShader.Dispatch(CurrentKernel, SDFValueCount / 8, SDFValueCount / 8, SDFValueCount / 8);
+        Debug.Log("SDF Loaded");
     }
     //SOURCE: https://github.com/SebLague/Fluid-Planet/blob/main/Assets/Scripts/Rendering/MeshHelpers/QuadGenerator.cs------------------------
     public static Mesh GenerateQuadMesh()

@@ -63,14 +63,14 @@ SamplerState linearClampSampler;
 
 const float4x4 sdfWorldToLocalMatrix;
 float SampleSDF(float3 posWorld) {
-    float3 sdfWorldSize = float3(SDFSize.x,SDFSize.y,SDFSize.z);
-    float3 uvw = (posWorld + sdfWorldSize / 2) / sdfWorldSize;
+    float3 sdfWorldSize = float3(SDFValueCount.x,SDFValueCount.y,SDFValueCount.z);
+    float3 uvw = (posWorld + sdfWorldSize / 2) /sdfWorldSize;
     float dstFromSurface = SDFReadTexture.SampleLevel(linearClampSampler, uvw, 0).r;
     return dstFromSurface;
 }
 
 float3 calculateSDFNormal(float3 pos) {
-    const float s = 0.4;
+    const float s = 4;
     float3 offsetX = int3(1, 0, 0) * s;
     float3 offsetY = int3(0, 1, 0) * s;
     float3 offsetZ = int3(0, 0, 1) * s;
@@ -83,13 +83,12 @@ float3 calculateSDFNormal(float3 pos) {
 }
 float3 WorldToSDF(float3 pos) {
     pos = pos - float3(SDF_OffSet.x,SDF_OffSet.y,SDF_OffSet.z);
-    float3 tempScale = SDF_Scale*0.333333333; //Till i figure iout how to do the sdf at 1 scale
+    float3 tempScale = SDF_Scale*(SDFSize.x/SDFValueCount.x);
     pos = float3(pos.x/tempScale.x,pos.y/tempScale.y,pos.z/tempScale.z);
     return pos;
 }
 void ResolveCollisionsSDF(inout float3 pos, inout float3 vel, float collisionDamping) {
-    float dstFromSurface = SampleSDF(WorldToSDF(pos))-0.1;
-
+    float dstFromSurface = SampleSDF(WorldToSDF(pos));
     if (dstFromSurface < 0) {
         float3 up = calculateSDFNormal(WorldToSDF(pos)); // Richtung zu
         pos -= up * min(0, dstFromSurface);

@@ -13,6 +13,6 @@ public class CopyPos : MonoBehaviour
     void Update()
     {
         this.transform.position = new Vector3(refScript.SDF_Pos.x, refScript.SDF_Pos.y, refScript.SDF_Pos.z);
-        this.transform.localScale = new Vector3(refScript.SDF_scale.x * 0.33334f, refScript.SDF_scale.y * 0.33334f, refScript.SDF_scale.z * 0.33334f);
+        this.transform.localScale = new Vector3(refScript.SDF_scale.x, refScript.SDF_scale.y, refScript.SDF_scale.z);
     }
 }
