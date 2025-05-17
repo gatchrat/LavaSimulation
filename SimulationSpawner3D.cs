@@ -110,9 +110,9 @@ public class SimulationSpawner3D : MonoBehaviour
     {
         //Run at atleast 60fps, slow down the simulation if framerate not reached to prevent explosion
         //Run 3 Simulation Steps per frame to improve Timestep size while not being slowed down by the render
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f), false);
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f), false);
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f), true);
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
         RenderLava();
     }
 
@@ -224,7 +224,7 @@ public class SimulationSpawner3D : MonoBehaviour
         mesh = GenerateQuadMesh();
         CreateArgsBuffer(mesh, Points.Length);
     }
-    private void ComputeLava(float TimeStep, bool getData)
+    private void ComputeLava(float TimeStep)
     {
         int CurrentKernel = 0;
         if (SpawnMode == SpawnMode.Flow)
@@ -297,16 +297,13 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloats("SDF_Scale", SDF_scale.x, SDF_scale.y, SDF_scale.z);
         ComputeShader.SetInts("SDFValueCount", SDFValueCount, SDFValueCount, SDFValueCount);
         ComputeShader.SetFloats("SDFSize", SDFSize, SDFSize, SDFSize);
+        Vector3 Pos = LavaGenerator.gameObject.transform.position;
+        ComputeShader.SetFloats("Spawnpoint", Pos.x, Pos.y, Pos.z);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
-
-        if (getData)
-        {
-            LavaBuffer.GetData(Points);
-            PositionBuffer.GetData(PredictedPositions);
-        }
     }
     private void RenderLava()
     {
+        LavaBuffer.GetData(Points);
         //Render Results
         if (Renderer == RenderMode.AsMesh)
         {

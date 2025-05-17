@@ -148,7 +148,7 @@ Transform:
   m_GameObject: {fileID: 58217547}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.1081, y: 2.1, z: -0.2437}
   m_LocalScale: {x: 0.01, y: 0.01, z: 0.01}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -490,27 +490,27 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.50001
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.50001
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.50001
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.15
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -4
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -2
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalRotation.w
@@ -539,6 +539,10 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
+      propertyPath: m_Enabled
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 9939403df0d7af94a9a14c16cd8d2da2, type: 3}
       propertyPath: m_Name
@@ -603,6 +607,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ComputeShader: {fileID: 7200000, guid: 9356205ead5810e4c95012b5ec7abb9b, type: 3}
+  SDFFileName: testculcan
   LavaGenerator: {fileID: 58217549}
   LavaGeneratedMesh: {fileID: 2017910448}
   colourMap:
@@ -636,14 +641,14 @@ MonoBehaviour:
     m_NumColorKeys: 3
     m_NumAlphaKeys: 2
   Renderer: 2
-  SpawnMode: 0
+  SpawnMode: 2
   BilboardShader: {fileID: 4800000, guid: ec757a1459302f348a71e580d5dda655, type: 3}
   XCount: 32
   YCount: 32
   ZCount: 32
-  BoundsWidth: 10
-  BoundsHeight: 8
-  BoundsDepth: 8
+  BoundsWidth: 20
+  BoundsHeight: 20
+  BoundsDepth: 20
   TargetDensity: 630
   PressureMultiplier: 288
   NearPressureMultiplier: 2.16
@@ -652,8 +657,8 @@ MonoBehaviour:
   Viscosity: 0.5
   isoLevel: 1
   voxelSize: 0.1
-  SDF_scale: {x: 1.5, y: 1.5, z: 1.5}
-  SDF_Pos: {x: -0.15, y: 0, z: 0}
+  SDF_scale: {x: 1, y: 1, z: 1}
+  SDF_Pos: {x: 1, y: -4, z: -2}
 --- !u!114 &277898295
 MonoBehaviour:
   m_ObjectHideFlags: 0
