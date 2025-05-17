@@ -85,6 +85,7 @@ public class SimulationSpawner3D : MonoBehaviour
     private uint[] StartingIndizes;
     private int SDFValueCount;
     private float SDFSize;
+    Mesh mesh;
 
 
     void Start()
@@ -219,6 +220,9 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
+
+        mesh = GenerateQuadMesh();
+        CreateArgsBuffer(mesh, Points.Length);
     }
     private void ComputeLava(float TimeStep, bool getData)
     {
@@ -327,7 +331,7 @@ public class SimulationSpawner3D : MonoBehaviour
         spatialKeys.Dispose();
         spatialOffsets.Dispose();
         sortedIndices.Dispose();
-        argsBuffer.Release();
+        argsBuffer.Dispose();
         sortTarget_PointsBuffer.Dispose();
         sortTarget_predictedPositionsBuffer.Dispose();
         //      HashesBuffer.Dispose();
@@ -337,9 +341,6 @@ public class SimulationSpawner3D : MonoBehaviour
     private void RenderLavaNormal()
     {
         Bounds bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
-        Mesh mesh = GenerateQuadMesh();
-        argsBuffer = new ComputeBuffer(10, 4);
-        CreateArgsBuffer(ref argsBuffer, mesh, Points.Length);
 
 
         Material mat = new Material(BilboardShader);
@@ -548,6 +549,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetInts("SDFValueCount", SDFValueCount, SDFValueCount, SDFValueCount);
         ComputeShader.SetFloats("SDFSize", SDFSize, SDFSize, SDFSize);
         ComputeShader.Dispatch(CurrentKernel, SDFValueCount / 8, SDFValueCount / 8, SDFValueCount / 8);
+        SDFValueBuffer.Dispose();
         Debug.Log("SDF Loaded");
     }
     //SOURCE: https://github.com/SebLague/Fluid-Planet/blob/main/Assets/Scripts/Rendering/MeshHelpers/QuadGenerator.cs------------------------
@@ -609,19 +611,14 @@ public class SimulationSpawner3D : MonoBehaviour
         texture.SetPixels(cols);
         texture.Apply();
     }
-    public static void CreateArgsBuffer(ref ComputeBuffer argsBuffer, Mesh mesh, int numInstances)
+    public void CreateArgsBuffer(Mesh mesh, int numInstances)
     {
         const int stride = sizeof(uint);
         const int numArgs = 5;
         const int subMeshIndex = 0;
         uint[] argsBufferArray = new uint[5];
+        argsBuffer = new ComputeBuffer(numArgs, stride, ComputeBufferType.IndirectArguments);
 
-        bool createNewBuffer = argsBuffer == null || !argsBuffer.IsValid() || argsBuffer.count != argsBufferArray.Length || argsBuffer.stride != stride;
-        if (createNewBuffer)
-        {
-            argsBuffer.Dispose();
-            argsBuffer = new ComputeBuffer(numArgs, stride, ComputeBufferType.IndirectArguments);
-        }
 
         lock (argsBufferArray)
         {
