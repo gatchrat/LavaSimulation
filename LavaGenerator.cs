@@ -15,7 +15,8 @@ public class LavaGenerator : MonoBehaviour
                     LavaPoint Point = new LavaPoint
                     {
                         Color = Color.white,
-                        active = 1
+                        active = 1,
+                        age = 0f
                     };
 
                     Point.Position = new Vector3((-XCount / 2 + x) * 0.15f, y * 0.15f + 0.5f, (-ZCount / 2 + z) * 0.15f);
@@ -37,7 +38,8 @@ public class LavaGenerator : MonoBehaviour
                     LavaPoint Point = new LavaPoint
                     {
                         Color = Color.white,
-                        active = 1
+                        active = 1,
+                        age = 0f
                     };
 
                     Point.Position = new Vector3(
@@ -64,7 +66,8 @@ public class LavaGenerator : MonoBehaviour
                     LavaPoint Point = new LavaPoint
                     {
                         Color = Color.white,
-                        active = 0
+                        active = 0,
+                        age = 0f
                     };
 
                     Point.Position = new Vector3((-XCount / 2 + x) * 0.15f, y * 0.15f + 0.5f, (-ZCount / 2 + z) * 0.15f) + new Vector3(99, 99, 99);

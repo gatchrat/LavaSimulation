@@ -21,6 +21,7 @@ Shader "Fluid/ParticleBillboard" {
                  float3 Velocity;
                  float4 Color;
 				 int active;
+				 float age;
             };
 			StructuredBuffer<LavaPoint> Points;
 			Texture2D<float4> ColourMap;
@@ -53,10 +54,9 @@ Shader "Fluid/ParticleBillboard" {
 				o.pos = mul(UNITY_MATRIX_P, viewPos);
 
 
-				float speed = length(Points[instanceID].Velocity);
-				float speedT = saturate(speed / velocityMax);
-				float colT = speedT;
-				o.colour = ColourMap.SampleLevel(linear_clamp_sampler, float2(colT, 0.5), 0);
+				float age = Points[instanceID].age;
+				float ageT = saturate(velocityMax /age );
+				o.colour = ColourMap.SampleLevel(linear_clamp_sampler, float2(ageT, 0.5), 0);
 				o.posWorld = centreWorld;
 
 				return o;

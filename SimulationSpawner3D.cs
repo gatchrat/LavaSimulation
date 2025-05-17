@@ -13,8 +13,7 @@ public enum RenderMode
 {
     ByHash,
     ByVelocity,
-    ByDensity,
-    AsMesh
+    ByDensity
 }
 public enum SpawnMode
 {
@@ -29,6 +28,7 @@ public struct LavaPoint
     public Vector3 Velocity;
     public Vector4 Color;
     public int active;
+    public float age;
 };
 public class SimulationSpawner3D : MonoBehaviour
 {
@@ -37,7 +37,6 @@ public class SimulationSpawner3D : MonoBehaviour
     public String SDFFileName;
     public LavaGenerator LavaGenerator;
     ComputeBuffer argsBuffer;
-    public MeshFilter LavaGeneratedMesh;
     public Gradient colourMap;
     public RenderMode Renderer;
     public SpawnMode SpawnMode;
@@ -55,16 +54,10 @@ public class SimulationSpawner3D : MonoBehaviour
     private Mesh Mesh;
     public Material Material;
     public float Viscosity = 1f;
-    public float isoLevel = 0.3f;
-
-    [Range(0.05f, 1f)]
-    public float voxelSize = 0.1f;
 
     [Header("SDF Settings")]
     public Vector3 SDF_scale = new Vector3(1f, 1f, 1f);
     public Vector3 SDF_Pos = new Vector3(0f, 0f, 0f);
-
-    float[,,] densityField;
     ComputeBuffer LavaBuffer;
     Vector3[] PredictedPositions;
     private RenderTexture SDFTexture;
@@ -82,7 +75,7 @@ public class SimulationSpawner3D : MonoBehaviour
     private int HashesBufferSize;
     private HashEntry[] Hashes;
     private int NumOfPossibleHashes;
-    private uint[] StartingIndizes;
+
     private int SDFValueCount;
     private float SDFSize;
     Mesh mesh;
@@ -143,7 +136,7 @@ public class SimulationSpawner3D : MonoBehaviour
         int PositionSize = sizeof(float) * 3;
         int ColorSize = sizeof(float) * 4;
         int VelocitySize = sizeof(float) * 3;
-        int TotalSize = PositionSize + ColorSize + VelocitySize + sizeof(int);
+        int TotalSize = PositionSize + ColorSize + VelocitySize + sizeof(int) + sizeof(float);
 
         Vector2[] Densities = new Vector2[Points.Length];
         DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 2);
@@ -305,11 +298,7 @@ public class SimulationSpawner3D : MonoBehaviour
     {
         LavaBuffer.GetData(Points);
         //Render Results
-        if (Renderer == RenderMode.AsMesh)
-        {
-            RenderLavaAsMesh();
-        }
-        else if (Renderer == RenderMode.ByVelocity || Renderer == RenderMode.ByDensity)
+        if (Renderer == RenderMode.ByVelocity || Renderer == RenderMode.ByDensity)
         {
             RenderLavaNormal();
         }
@@ -346,8 +335,8 @@ public class SimulationSpawner3D : MonoBehaviour
         mat.SetTexture("ColourMap", gradientTexture);
 
 
-        mat.SetFloat("scale", 1 * 0.05f);
-        mat.SetFloat("velocityMax", 10);
+        mat.SetFloat("scale", 1 * 0.1f);
+        mat.SetFloat("velocityMax", 5);
         mat.SetBuffer("Points", LavaBuffer);
 
         Vector3 s = transform.localScale;

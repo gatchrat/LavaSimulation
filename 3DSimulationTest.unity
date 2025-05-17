@@ -609,7 +609,6 @@ MonoBehaviour:
   ComputeShader: {fileID: 7200000, guid: 9356205ead5810e4c95012b5ec7abb9b, type: 3}
   SDFFileName: testculcan
   LavaGenerator: {fileID: 58217549}
-  LavaGeneratedMesh: {fileID: 2017910448}
   colourMap:
     serializedVersion: 2
     key0: {r: 0.1792453, g: 0.084115095, b: 0.032974374, a: 1}
@@ -655,8 +654,6 @@ MonoBehaviour:
   SmoothingRadius: 0.2
   Material: {fileID: 2100000, guid: 3ced077c620ac2e45b4ff5f3a6f26f08, type: 2}
   Viscosity: 0.5
-  isoLevel: 1
-  voxelSize: 0.1
   SDF_scale: {x: 1, y: 1, z: 1}
   SDF_Pos: {x: -10, y: -4, z: -2}
 --- !u!114 &277898295
@@ -987,8 +984,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1823688464}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.32652745, z: -0, w: 0.94518775}
-  m_LocalPosition: {x: 12.61, y: 4, z: -11.94}
+  m_LocalRotation: {x: -0.098948, y: 0.8790225, z: -0.20356497, w: -0.419631}
+  m_LocalPosition: {x: 16.891693, y: 16.859936, z: 12.099312}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1006,7 +1003,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 23c1ce4fb46143f46bc5cb5224c934f6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  clearColorMode: 1
+  clearColorMode: 0
   backgroundColorHDR: {r: 1, g: 1, b: 1, a: 1}
   clearDepth: 1
   volumeLayerMask:

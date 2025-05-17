@@ -25,7 +25,7 @@ float PressureMultiplier; //How Fast should we reach the target state
 float NearPressureMultiplier;
 float ViscosityMultiplier;
 float BoundsWidth; //Centered on 0
-float BoundsHeight; //Beginning on 0
+float BoundsHeight; //Beginning on 0 
 float BoundsDepth; //Centered on 0
 // Grid size and threshold
 int3 GridSize;
@@ -289,6 +289,7 @@ void Simulation (uint3 id : SV_DispatchThreadID) {
     CurPoint = ReColor(id.x);
     CurPoint.Velocity = CalcVelocity(id.x);
     CurPoint.Position = CalcPosition(CurPoint);
+    CurPoint.age += TimePassed;
     Points[id.x] = HandleCollision(CurPoint);
 } 
 [numthreads(1,1,1)]
