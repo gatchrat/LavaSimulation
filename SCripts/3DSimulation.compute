@@ -297,7 +297,7 @@ void Activate (uint3 id : SV_DispatchThreadID) {
         if(Points[i].active == 0) {
             Points[i].active = 1;
             Points[i].Position = Spawnpoint;
-            Points[i].Velocity = float3(10,0,0);
+            Points[i].Velocity = float3(2,10,0);
             return;
         }
     }
