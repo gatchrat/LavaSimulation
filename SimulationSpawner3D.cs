@@ -100,15 +100,15 @@ public class SimulationSpawner3D : MonoBehaviour
         Hashes = new HashEntry[HashesBufferSize];
 
         InitBuffers();
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        //ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
     }
     void Update()
     {
         //Run at atleast 60fps, slow down the simulation if framerate not reached to prevent explosion
         //Run 3 Simulation Steps per frame to improve Timestep size while not being slowed down by the render
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f), false);
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f), false);
+        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f), true);
         RenderLava();
     }
 
@@ -159,7 +159,7 @@ public class SimulationSpawner3D : MonoBehaviour
         spatialOffsets = new ComputeBuffer(Points.Length, sizeof(uint));
         sortedIndices = new ComputeBuffer(Points.Length, sizeof(uint));
     }
-    private void ComputeLava(float TimeStep)
+    private void ComputeLava(float TimeStep, bool getData)
     {
         int CurrentKernel = 0;
         if (SpawnMode == SpawnMode.Flow)
@@ -268,9 +268,11 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
-
-        LavaBuffer.GetData(Points);
-        PositionBuffer.GetData(PredictedPositions);
+        if (getData)
+        {
+            LavaBuffer.GetData(Points);
+            PositionBuffer.GetData(PredictedPositions);
+        }
     }
     private void RenderLava()
     {
