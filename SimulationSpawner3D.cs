@@ -34,6 +34,7 @@ public class SimulationSpawner3D : MonoBehaviour
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     public ComputeShader ComputeShader;
+    public String SDFFileName;
     public LavaGenerator LavaGenerator;
     ComputeBuffer argsBuffer;
     public MeshFilter LavaGeneratedMesh;
@@ -508,10 +509,17 @@ public class SimulationSpawner3D : MonoBehaviour
 
     private void LoadSDF()
     {
-        SDFTexture = new RenderTexture(30, 30, 0)
+        TextAsset mytxtData = Resources.Load<TextAsset>(SDFFileName);
+        string txt = mytxtData.text;
+        string[] Values = txt.Split(' ');
+        int SDFValueCount = int.Parse(Values[0]);
+        Debug.Log(Values[3]);
+        float SDFSize = float.Parse(Values[3]);
+
+        SDFTexture = new RenderTexture(SDFValueCount, SDFValueCount, 0)
         {
             dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
-            volumeDepth = 30,
+            volumeDepth = SDFValueCount,
             enableRandomWrite = true,
             wrapMode = TextureWrapMode.Clamp,
             filterMode = FilterMode.Bilinear,
@@ -520,11 +528,8 @@ public class SimulationSpawner3D : MonoBehaviour
         };
         SDFTexture.Create();
 
-        float[] SDFValues = new float[30 * 30 * 30];
-        TextAsset mytxtData = Resources.Load<TextAsset>("Volcano_SDF30");
-        string txt = mytxtData.text;
-        string[] Values = txt.Split(' ');
-        Debug.Log("Loaded: " + Values.Length);
+        float[] SDFValues = new float[SDFValueCount * SDFValueCount * SDFValueCount];
+
         //Last value is empty, first 3 show how many sample points are taken, second 3 show the bounds of the scanner
         for (int i = 6; i < Values.Length - 1; i++)
         {
@@ -536,7 +541,8 @@ public class SimulationSpawner3D : MonoBehaviour
         int CurrentKernel = ComputeShader.FindKernel("LOADSDF");
         ComputeShader.SetBuffer(CurrentKernel, "SDFValues", SDFValueBuffer);
         ComputeShader.SetTexture(CurrentKernel, "SDFTexture", SDFTexture);
-        ComputeShader.SetInts("SDFSize", 30, 30, 30);
+        ComputeShader.SetInts("SDFValueCount", SDFValueCount, SDFValueCount, SDFValueCount);
+        ComputeShader.SetFloats("SDFSize", SDFSize, SDFSize, SDFSize);
         ComputeShader.Dispatch(CurrentKernel, 10, 10, 10);
     }
     //SOURCE: https://github.com/SebLague/Fluid-Planet/blob/main/Assets/Scripts/Rendering/MeshHelpers/QuadGenerator.cs------------------------

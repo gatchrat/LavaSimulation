@@ -57,12 +57,13 @@ StructuredBuffer<int> TriTable;       // 256 * 16 entries
 //--------Slightly adapted from: https://github.com/SebLague/Fluid-Planet/blob/main/Assets/Scripts/Simulation/Compute/FluidSim.compute
 RWTexture3D<float> SDFTexture;
 Texture3D<float4> SDFReadTexture;
-uint3 SDFSize;
+float3 SDFSize;
+uint3 SDFValueCount;
 SamplerState linearClampSampler;
 
 const float4x4 sdfWorldToLocalMatrix;
 float SampleSDF(float3 posWorld) {
-    float3 sdfWorldSize = float3(30,30,30);
+    float3 sdfWorldSize = float3(SDFSize.x,SDFSize.y,SDFSize.z);
     float3 uvw = (posWorld + sdfWorldSize / 2) / sdfWorldSize;
     float dstFromSurface = SDFReadTexture.SampleLevel(linearClampSampler, uvw, 0).r;
     return dstFromSurface;
@@ -82,12 +83,12 @@ float3 calculateSDFNormal(float3 pos) {
 }
 float3 WorldToSDF(float3 pos) {
     pos = pos - float3(SDF_OffSet.x,SDF_OffSet.y,SDF_OffSet.z);
-    float3 tempScale = SDF_Scale*0.3; //Till i figure iout how to do the sdf at 1 scale
+    float3 tempScale = SDF_Scale*0.333333333; //Till i figure iout how to do the sdf at 1 scale
     pos = float3(pos.x/tempScale.x,pos.y/tempScale.y,pos.z/tempScale.z);
     return pos;
 }
 void ResolveCollisionsSDF(inout float3 pos, inout float3 vel, float collisionDamping) {
-    float dstFromSurface = SampleSDF(WorldToSDF(pos));
+    float dstFromSurface = SampleSDF(WorldToSDF(pos))-0.1;
 
     if (dstFromSurface < 0) {
         float3 up = calculateSDFNormal(WorldToSDF(pos)); // Richtung zu
@@ -429,10 +430,10 @@ void PredictPositions (uint3 id : SV_DispatchThreadID) {
 //------------------------------------------------------------LOAD SDF---------------------------------------------------------------------------------
 [numthreads(8,8,8)]
 void LOADSDF (uint3 id : SV_DispatchThreadID) {
-    if(any(id >= SDFSize)) {
+    if(any(id >= SDFValueCount)) {
         return;
     }
-    SDFTexture[id] = SDFValues[id.x+id.y*SDFSize.x+id.z*SDFSize.x*SDFSize.y];
+    SDFTexture[id] = SDFValues[id.x+id.y*SDFValueCount.x+id.z*SDFValueCount.x*SDFValueCount.y];
 }
 
 //------------------------------------------------------------MARCHING CUBES ---------------------------------------------------------------------------------
