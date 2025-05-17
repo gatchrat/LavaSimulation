@@ -158,6 +158,64 @@ public class SimulationSpawner3D : MonoBehaviour
         spatialKeys = new ComputeBuffer(Points.Length, sizeof(uint));
         spatialOffsets = new ComputeBuffer(Points.Length, sizeof(uint));
         sortedIndices = new ComputeBuffer(Points.Length, sizeof(uint));
+
+        //AssignBuffers
+        int CurrentKernel = 0;
+        if (SpawnMode == SpawnMode.Flow)
+        {
+            CurrentKernel = ComputeShader.FindKernel("Activate");
+            ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+        }
+        CurrentKernel = ComputeShader.FindKernel("PredictPositions");
+        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+
+        CurrentKernel = ComputeShader.FindKernel("UpdateSpatialHash");
+        ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
+        ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
+
+        CurrentKernel = ComputeShader.FindKernel("SortHashesNeu");
+        ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
+        ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
+
+        CurrentKernel = ComputeShader.FindKernel("InitializeOffsets");
+        ComputeShader.SetBuffer(CurrentKernel, "SortedKeys", spatialKeys);
+        ComputeShader.SetBuffer(CurrentKernel, "Offsets", spatialOffsets);
+
+        CurrentKernel = ComputeShader.FindKernel("CalculateOffsets");
+        ComputeShader.SetBuffer(CurrentKernel, "SortedKeys", spatialKeys);
+        ComputeShader.SetBuffer(CurrentKernel, "Offsets", spatialOffsets);
+
+        CurrentKernel = ComputeShader.FindKernel("Reorder");
+        ComputeShader.SetBuffer(CurrentKernel, "SortTarget_Points", sortTarget_PointsBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "SortTarget_PredictedPositions", sortTarget_predictedPositionsBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
+
+        CurrentKernel = ComputeShader.FindKernel("ReorderCopyBack");
+        ComputeShader.SetBuffer(CurrentKernel, "SortTarget_Points", sortTarget_PointsBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "SortTarget_PredictedPositions", sortTarget_predictedPositionsBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
+
+        CurrentKernel = ComputeShader.FindKernel("DensityCache");
+        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "CachedDensities", DensityBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
+        ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
+
+        CurrentKernel = ComputeShader.FindKernel("Simulation");
+        ComputeShader.SetTexture(CurrentKernel, "SDFReadTexture", SDFTexture);
+        ComputeShader.SetBuffer(CurrentKernel, "CachedDensities", DensityBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
+        ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
     }
     private void ComputeLava(float TimeStep, bool getData)
     {
@@ -165,24 +223,17 @@ public class SimulationSpawner3D : MonoBehaviour
         if (SpawnMode == SpawnMode.Flow)
         {
             CurrentKernel = ComputeShader.FindKernel("Activate");
-            ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
             ComputeShader.SetFloat("TimePassed", TimeStep);
             ComputeShader.Dispatch(CurrentKernel, 1, 1, 1);
         }
 
 
         CurrentKernel = ComputeShader.FindKernel("PredictPositions");
-        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
-
         ComputeShader.SetInt("ParticleCount", Points.Length);
         ComputeShader.SetFloat("SmoothingRadius", SmoothingRadius);
+
         CurrentKernel = ComputeShader.FindKernel("UpdateSpatialHash");
-        ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
-        ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
-        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
 
@@ -192,8 +243,6 @@ public class SimulationSpawner3D : MonoBehaviour
         // Number of steps = [log2(n) * (log2(n) + 1)] / 2
         // where n = nearest power of 2 that is greater or equal to the number of inputs
         int numStages = (int)Math.Log(Mathf.NextPowerOfTwo(Points.Length), 2); //POINTS LENGTH MUSS POW OF 2 SEIN???
-        ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
-        ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
         for (int stageIndex = 0; stageIndex < numStages; stageIndex++)
         {
             for (int stepIndex = 0; stepIndex < stageIndex + 1; stepIndex++)
@@ -209,52 +258,27 @@ public class SimulationSpawner3D : MonoBehaviour
             }
         }
         CurrentKernel = ComputeShader.FindKernel("InitializeOffsets");
-        ComputeShader.SetBuffer(CurrentKernel, "SortedKeys", spatialKeys);
-        ComputeShader.SetBuffer(CurrentKernel, "Offsets", spatialOffsets);
         ComputeShader.SetInt("numInputs", Points.Length);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         CurrentKernel = ComputeShader.FindKernel("CalculateOffsets");
-        ComputeShader.SetBuffer(CurrentKernel, "SortedKeys", spatialKeys);
-        ComputeShader.SetBuffer(CurrentKernel, "Offsets", spatialOffsets);
         ComputeShader.SetInt("numInputs", Points.Length);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
-
-
         // Reorder kernel
         CurrentKernel = ComputeShader.FindKernel("Reorder");
-        ComputeShader.SetBuffer(CurrentKernel, "SortTarget_Points", sortTarget_PointsBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "SortTarget_PredictedPositions", sortTarget_predictedPositionsBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         // Reorder copyback kernel
         CurrentKernel = ComputeShader.FindKernel("ReorderCopyBack");
-        ComputeShader.SetBuffer(CurrentKernel, "SortTarget_Points", sortTarget_PointsBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "SortTarget_PredictedPositions", sortTarget_predictedPositionsBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         CurrentKernel = ComputeShader.FindKernel("DensityCache");
-        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "CachedDensities", DensityBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
-        ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
         ComputeShader.SetFloat("TimePassed", TimeStep);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         //Calculate Forces and Movement
         CurrentKernel = ComputeShader.FindKernel("Simulation");
-        ComputeShader.SetTexture(CurrentKernel, "SDFReadTexture", SDFTexture);
-        ComputeShader.SetBuffer(CurrentKernel, "CachedDensities", DensityBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "Points", LavaBuffer);
         ComputeShader.SetFloat("BoundsHeight", BoundsHeight);
         ComputeShader.SetFloat("BoundsDepth", BoundsDepth);
         ComputeShader.SetFloat("BoundsWidth", BoundsWidth);
@@ -264,8 +288,6 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloat("NearPressureMultiplier", NearPressureMultiplier);
         ComputeShader.SetFloats("SDF_OffSet", SDF_Pos.x, SDF_Pos.y, SDF_Pos.z);
         ComputeShader.SetFloats("SDF_Scale", SDF_scale.x, SDF_scale.y, SDF_scale.z);
-        ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
-        ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
         if (getData)
