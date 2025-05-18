@@ -1,13 +1,7 @@
 using UnityEngine;
-using System.Collections.Generic;
 using System;
 using UnityEngine.Experimental.Rendering;
 
-public struct HashEntry
-{
-    public uint hash;
-    public uint index;
-}
 public enum SpawnMode
 {
     AtOnce,
