@@ -108,7 +108,9 @@ public class SimulationSpawner3D : MonoBehaviour
         int PositionSize = sizeof(float) * 3;
         int ColorSize = sizeof(float) * 4;
         int VelocitySize = sizeof(float) * 3;
-        int TotalSize = PositionSize + ColorSize + VelocitySize + sizeof(int) + sizeof(float);
+        int AktiveSize = sizeof(int);
+        int AgeSize = sizeof(float);
+        int TotalSize = PositionSize + ColorSize + VelocitySize + AktiveSize + AgeSize;
 
         Vector2[] Densities = new Vector2[Points.Length];
         DensityBuffer = new ComputeBuffer(Points.Length, sizeof(float) * 2);
@@ -201,12 +203,12 @@ public class SimulationSpawner3D : MonoBehaviour
 
         CurrentKernel = ComputeShader.FindKernel("PredictPositions");
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
+
         ComputeShader.SetInt("ParticleCount", Points.Length);
         ComputeShader.SetFloat("SmoothingRadius", SmoothingRadius);
 
         CurrentKernel = ComputeShader.FindKernel("UpdateSpatialHash");
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
-
 
         CurrentKernel = ComputeShader.FindKernel("SortHashesNeu");
         ComputeShader.SetInt("numEntries", Points.Length);
@@ -248,7 +250,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloat("TimePassed", TimeStep);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
-        //Calculate Forces and Movement
+        //Actual Simulation Step
         CurrentKernel = ComputeShader.FindKernel("Simulation");
         ComputeShader.SetFloat("BoundsHeight", BoundsHeight);
         ComputeShader.SetFloat("BoundsDepth", BoundsDepth);
