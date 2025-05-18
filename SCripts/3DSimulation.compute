@@ -4,9 +4,7 @@
 #pragma kernel CalcHashes
 #pragma kernel SortHashes
 #pragma kernel CalcStartingIndizes
-#pragma kernel March
 #pragma kernel LOADSDF
-#pragma kernel DensityField
 #pragma kernel PredictPositions
 #pragma kernel UpdateSpatialHash
 #pragma kernel ReorderCopyBack
@@ -345,76 +343,6 @@ void DensityCache (uint3 id : SV_DispatchThreadID) {
     LavaPoint CurPoint = Points[id.x];
     CachedDensities[id.x] = CalcDensity(id.x);
 }
-//------------------------------------------------------------DENSITY FIELD ---------------------------------------------------------------------------------
-float CalcDensitycringe(float3 RealPos) {
-    float Density = 0;
-    float sqrRadius = SmoothingRadius * SmoothingRadius;
-
-    for(uint i = 0; i<27;i++) {
-        float3 CheckPos = OffSetPosition(RealPos,i);
-        uint CheckHash = CalcHash(CheckPos+float3(10,0,10));//Move Pos to always be positive
-        uint StartIndex = StartingIndizes[CheckHash];
-        if(StartIndex== 0xFFFFFFFF) {
-            continue;
-        }
-        while(StartIndex < ParticleCount) {
-            //Check if still checking in the right hashgroup
-            if(Hashes[StartIndex].hash != CheckHash) {
-                break;
-            }
-            if(Hashes[StartIndex].index >= 0 && Hashes[StartIndex].index < ParticleCount) {
-                //-----------------------------------
-                float3 Direction = PredictedPosition[Hashes[StartIndex].index]-RealPos;
-                float sqrDstToNeighbour = dot(Direction, Direction);
-                float Distance = sqrt(sqrDstToNeighbour);
-
-                if (sqrDstToNeighbour < sqrRadius) {
-                    Density+=SpikyKernelPow23D(Distance,SmoothingRadius);
-                }
-                //-----------------------------------
-            }
-            StartIndex++;
-        }
-    }
-    return Density;
-}
-bool isBorder(uint3 id) {
-    if(id.x == 0) {
-        return true;
-    }
-    if(id.x >= FieldWidth-1) {
-        return true;
-    }
-    if(id.y == 0) {
-        return true;
-    }
-    if(id.y >= FieldHeight-1) {
-        return true;
-    }
-    if(id.z == 0) {
-        return true;
-    }
-    if(id.z >= FieldDepth-1) {
-        return true;
-    }
-    return false;
-}
-[numthreads(8,8,8)]
-void DensityField (uint3 id : SV_DispatchThreadID) {
-    if ((id.x >= FieldWidth)) return;
-    if ((id.y >= FieldHeight)) return;
-    if ((id.z >= FieldDepth)) return;
-
-    float3 RealPos = float3(-FieldWidth/2,0,-FieldDepth/2)* VoxelSize + ((float3)id) * VoxelSize;
-
-    if(isBorder(id)) {
-        DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight] = 0;
-        DensityTexture[id] =  0;
-    }else {
-        DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight] = CalcDensity(RealPos);
-        DensityTexture[id] = DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight];
-    }
-}
 //------------------------------------------------------------POSITION PREDICTOR ---------------------------------------------------------------------------------
 float3 PredictPosition(int PointID) {
     LavaPoint CurPoint = Points[PointID];
@@ -435,92 +363,6 @@ void LOADSDF (uint3 id : SV_DispatchThreadID) {
         return;
     }
     SDFTexture[id] = SDFValues[id.x+id.y*SDFValueCount.x+id.z*SDFValueCount.x*SDFValueCount.y];
-}
-
-//------------------------------------------------------------MARCHING CUBES ---------------------------------------------------------------------------------
-static const int3 vertexOffset[8] = {
-    int3(0, 0, 0), // 0
-    int3(1, 0, 0), // 1
-    int3(0, 1, 0), // 2
-    int3(1, 1, 0), // 3
-    int3(0, 0, 1), // 4
-    int3(1, 0, 1), // 5
-    int3(0, 1, 1), // 6
-    int3(1, 1, 1)  // 7
-};
-
-static const int2 edgeVertexIndices[12] = {
-    int2(0, 1), // 0
-    int2(1, 3), // 1
-    int2(3, 2), // 2
-    int2(2, 0), // 3
-    int2(4, 5), // 4
-    int2(5, 7), // 5
-    int2(7, 6), // 6
-    int2(6, 4), // 7
-    int2(0, 4), // 8
-    int2(1, 5), // 9
-    int2(3, 7), // 10
-    int2(2, 6)  // 11
-};
-
-float3 VertexInterp(float iso, float3 p1, float3 p2, float valp1, float valp2) {
-    if (abs(valp2 - valp1) < 1e-6) return 0.5 * (p1 + p2);
-    float t = (iso - valp1) / (valp2 - valp1);
-    return lerp(p1, p2, t);
-}
-
-[numthreads(8,8,8)]
-void March(uint3 id : SV_DispatchThreadID) {
-    if (id.x >= GridSize.x || id.y >= GridSize.y || id.z >= GridSize.z) return;
-
-    float cube[8];
-    float3 pos[8];
-
-    // Sample density field and convert to world positions
-    for (int i = 0; i < 8; i++) {
-        int3 offset = id + vertexOffset[i];
-        cube[i] = DensityTexture.Load(int4(offset, 0));
-        pos[i] = offset *VoxelSize;
-    }
-
-    // Build cube index
-    int cubeIndex = 0;
-    for (i = 0; i < 8; i++) {
-        if (cube[i] < IsoLevel) cubeIndex |= (1 << i);
-    }
-
-    int edgeFlags = EdgeTable[cubeIndex];
-    if (edgeFlags == 0) return;
-
-    float3 vertList[12];
-
-    for (i = 0; i < 12; i++) {
-        if (edgeFlags & (1 << i)) {
-            int2 e = edgeVertexIndices[i];
-            // Use the midpoint of the edge (between the two vertices)
-            vertList[i] = VertexInterp(IsoLevel, pos[e.x], pos[e.y], cube[e.x], cube[e.y]);
-        }
-    }
-
-    // Create triangles
-    for (i = 0; i < 16; i += 3) {
-        int index1 = TriTable[cubeIndex * 16 + i];
-        if (index1 == -1) break; // End of triangles for this cube
-
-        int index2 = TriTable[cubeIndex * 16 + i + 1];
-        if (index2 == -1) break; 
-        int index3 = TriTable[cubeIndex * 16 + i + 2];
-        if (index3 == -1) break; 
-
-        uint baseIndex;
-        InterlockedAdd(VertexCount[0], 3, baseIndex); // Reserve space for 3 vertices
-
-        //Unity does clockwise not counterclockwise
-        VertexBuffer[baseIndex+2] = vertList[index1]+float3(-BoundsWidth/2,0,-BoundsDepth/2);
-        VertexBuffer[baseIndex + 1] = vertList[index2]+float3(-BoundsWidth/2,0,-BoundsDepth/2);
-        VertexBuffer[baseIndex] = vertList[index3]+float3(-BoundsWidth/2,0,-BoundsDepth/2);
-    }
 }
 //------------------------------------------------------------STANDARD HASH ---------------------------------------------------------------------------------
 //Idea: Turn the Simulation area into grids

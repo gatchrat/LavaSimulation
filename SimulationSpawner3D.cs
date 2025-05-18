@@ -1,19 +1,12 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System;
-using System.Runtime.InteropServices;
 using UnityEngine.Experimental.Rendering;
 
 public struct HashEntry
 {
     public uint hash;
     public uint index;
-}
-public enum RenderMode
-{
-    ByHash,
-    ByVelocity,
-    ByDensity
 }
 public enum SpawnMode
 {
@@ -38,7 +31,6 @@ public class SimulationSpawner3D : MonoBehaviour
     public LavaGenerator LavaGenerator;
     ComputeBuffer argsBuffer;
     public Gradient colourMap;
-    public RenderMode Renderer;
     public SpawnMode SpawnMode;
     public Shader BilboardShader;
     public int XCount;
@@ -52,7 +44,6 @@ public class SimulationSpawner3D : MonoBehaviour
     public float NearPressureMultiplier;
     public float SmoothingRadius = 10f;
     private Mesh Mesh;
-    public Material Material;
     public float Viscosity = 1f;
 
     [Header("SDF Settings")]
@@ -69,13 +60,6 @@ public class SimulationSpawner3D : MonoBehaviour
     ComputeBuffer sortTarget_predictedPositionsBuffer;
     ComputeBuffer sortTarget_PointsBuffer;
     private LavaPoint[] Points;
-    private MaterialPropertyBlock props;
-    private List<Matrix4x4> matrices = new List<Matrix4x4>();
-    private List<Vector4> colors = new List<Vector4>();
-    private int HashesBufferSize;
-    private HashEntry[] Hashes;
-    private int NumOfPossibleHashes;
-
     private int SDFValueCount;
     private float SDFSize;
     Mesh mesh;
@@ -84,20 +68,10 @@ public class SimulationSpawner3D : MonoBehaviour
     void Start()
     {
         LoadSDF();
-
         InitLava();
-
         PredictedPositions = new Vector3[Points.Length];
-        props = new MaterialPropertyBlock();
         Mesh = GenerateQuadMesh();
-
-        NumOfPossibleHashes = 4096;
-        HashesBufferSize = Mathf.NextPowerOfTwo(Points.Length);
-        Debug.Log("Hashbuffersize:" + HashesBufferSize);
-        Hashes = new HashEntry[HashesBufferSize];
-
         InitBuffers();
-        //ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
     }
     void Update()
     {
@@ -128,8 +102,6 @@ public class SimulationSpawner3D : MonoBehaviour
                 Points = LavaGenerator.InitInactive(XCount, YCount, ZCount);
                 break;
         }
-
-        //        densityField = new float[(int)(BoundsWidth / voxelSize), (int)(BoundsHeight / voxelSize), (int)(BoundsDepth / voxelSize)];
     }
     void InitBuffers()
     {
@@ -157,7 +129,7 @@ public class SimulationSpawner3D : MonoBehaviour
         sortedIndices = new ComputeBuffer(Points.Length, sizeof(uint));
 
         //AssignBuffers
-        int CurrentKernel = 0;
+        int CurrentKernel;
         if (SpawnMode == SpawnMode.Flow)
         {
             CurrentKernel = ComputeShader.FindKernel("Activate");
@@ -219,14 +191,13 @@ public class SimulationSpawner3D : MonoBehaviour
     }
     private void ComputeLava(float TimeStep)
     {
-        int CurrentKernel = 0;
+        int CurrentKernel;
         if (SpawnMode == SpawnMode.Flow)
         {
             CurrentKernel = ComputeShader.FindKernel("Activate");
             ComputeShader.SetFloat("TimePassed", TimeStep);
             ComputeShader.Dispatch(CurrentKernel, 1, 1, 1);
         }
-
 
         CurrentKernel = ComputeShader.FindKernel("PredictPositions");
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
@@ -297,19 +268,11 @@ public class SimulationSpawner3D : MonoBehaviour
     private void RenderLava()
     {
         LavaBuffer.GetData(Points);
-        //Render Results
-        if (Renderer == RenderMode.ByVelocity || Renderer == RenderMode.ByDensity)
-        {
-            RenderLavaNormal();
-        }
-        else if (Renderer == RenderMode.ByHash)
-        {
-            RenderLavaByHash();
-        }
+        RenderLavaNormal();
     }
     private void DisposeBuffers()
     {
-        //Free Up Memory
+        //Free Up Memory, otherwise free memory leaks :)
         LavaBuffer.Dispose();
         DensityBuffer.Dispose();
         PositionBuffer.Dispose();
@@ -320,8 +283,6 @@ public class SimulationSpawner3D : MonoBehaviour
         argsBuffer.Dispose();
         sortTarget_PointsBuffer.Dispose();
         sortTarget_predictedPositionsBuffer.Dispose();
-        //      HashesBuffer.Dispose();
-        // StartingIndizesBuffer.Dispose();
     }
     //----------------------------------RENDERER------------------------------------------
     private void RenderLavaNormal()
@@ -347,40 +308,6 @@ public class SimulationSpawner3D : MonoBehaviour
         mat.SetMatrix("localToWorld", localToWorld);
         Graphics.DrawMeshInstancedIndirect(mesh, 0, mat, bounds, argsBuffer);
     }
-    private void RenderLavaByHash()
-    {
-        // Render in batches of 1023 (Unity limitation)
-        matrices.Clear();
-        colors.Clear();
-        foreach (var p in Points)
-        {
-            matrices.Add(Matrix4x4.TRS(p.Position, Quaternion.identity, Vector3.one * 0.1f));
-            colors.Add(Color.white);
-        }
-        for (int i = 0; i < Hashes.Length - 1; i++)
-        {
-            if ((int)Hashes[i].index > 0 && (int)Hashes[i].index < colors.Count)
-            {
-                Color color = colourMap.Evaluate(((float)Hashes[i].hash) / NumOfPossibleHashes);
-                colors[(int)Hashes[i].index] = color;
-            }
-
-        }
-
-        for (int i = 0; i < matrices.Count; i += 1023)
-        {
-            int count = Mathf.Min(1023, matrices.Count - i);
-            props.Clear();
-            props.SetVectorArray("_Color", colors.GetRange(i, count));
-            Graphics.DrawMeshInstanced(Mesh, 0, Material, matrices.GetRange(i, count), props);
-        }
-    }
-
-    private void RenderLavaAsMesh()
-    {
-        //See Commit at 17.5.2025 for code
-    }
-
     private void LoadSDF()
     {
         TextAsset mytxtData = Resources.Load<TextAsset>(SDFFileName);
