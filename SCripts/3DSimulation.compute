@@ -325,6 +325,9 @@ void Simulation (uint3 id : SV_DispatchThreadID) {
     if(CurPoint.active == 0) {
         return;
     }
+    if(CurPoint.age > 100) {
+        return;
+    }
     CurPoint = ReColor(id.x);
     CurPoint.Velocity = CalcVelocity(id.x);
     CurPoint.Position = CalcPosition(CurPoint);
