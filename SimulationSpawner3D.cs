@@ -30,6 +30,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public int XCount;
     public int YCount;
     public int ZCount;
+    public float ParticlePerSecond = 180;
     public float BoundsWidth = 14;
     public float BoundsHeight = 8;
     public float BoundsDepth = 14;
@@ -57,7 +58,8 @@ public class SimulationSpawner3D : MonoBehaviour
     private int SDFValueCount;
     private float SDFSize;
     Mesh mesh;
-
+    private float TimePassedOverall = 0f;
+    private int ParticleActivated = 0;
 
     void Start()
     {
@@ -190,8 +192,12 @@ public class SimulationSpawner3D : MonoBehaviour
         int CurrentKernel;
         if (SpawnMode == SpawnMode.Flow)
         {
+            TimePassedOverall += TimeStep;
+            int ParticleToActivate = (int)((TimePassedOverall * ParticlePerSecond) - ParticleActivated);
+            ParticleActivated += ParticleToActivate;
             CurrentKernel = ComputeShader.FindKernel("Activate");
             ComputeShader.SetFloat("TimePassed", TimeStep);
+            ComputeShader.SetInt("ParticleToActivate", ParticleToActivate);
             ComputeShader.Dispatch(CurrentKernel, 1, 1, 1);
         }
 

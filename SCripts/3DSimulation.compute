@@ -31,6 +31,7 @@ float IsoLevel;
 int FieldWidth;
 int FieldHeight;
 int FieldDepth;
+int ParticleToActivate;
 float VoxelSize;
 float3 Spawnpoint;
 //SDF
@@ -292,12 +293,18 @@ void Simulation (uint3 id : SV_DispatchThreadID) {
 } 
 [numthreads(1,1,1)]
 void Activate (uint3 id : SV_DispatchThreadID) {
+    if(ParticleToActivate == 0) {
+        return;
+    }
     for(int i = 0; i < ParticleCount; i++) {
         if(Points[i].active == 0) {
             Points[i].active = 1;
             Points[i].Position = Spawnpoint;
             Points[i].Velocity = float3(2,10,0);
-            return;
+            ParticleToActivate -= 1;
+            if(ParticleToActivate == 0) {
+                return;
+            }
         }
     }
 }
