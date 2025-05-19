@@ -37,6 +37,7 @@ float3 Spawnpoint;
 //SDF
 float3 SDF_OffSet;
 float3 SDF_Scale;
+float TemperatureExchangeSpeedModifier;
 RWStructuredBuffer<float3> PredictedPosition;
 RWStructuredBuffer<float> DensityValuesBuffer;
 RWTexture3D<float> DensityTexture; // 3D Density Field
@@ -218,7 +219,46 @@ float3 CalcViscosityForce(int PointID) {
     }
     return float3(ViscosityForce.x,ViscosityForce.y,ViscosityForce.z)*ViscosityMultiplier;
 }
+float CalcAge(int PointID) {
+    LavaPoint Point = Points[PointID];
 
+    float3 age = 0;
+    float sqrRadius = SmoothingRadius * SmoothingRadius;
+
+    float3 MyPosition = PredictedPosition[PointID];
+    int3 originCell = GetCell3D(MyPosition, SmoothingRadius);
+
+    for (int i = 0; i < 27; i++) {
+        uint hash = HashCell3D(originCell + offsets3D[i]);
+        uint key = KeyFromHash(hash, ParticleCount);
+        uint currIndex = SpatialOffsets[key];
+        while (currIndex < ParticleCount) {
+            uint neighbourIndex = currIndex;
+            currIndex++;
+
+            // Skip if looking at self
+            if (neighbourIndex == PointID)
+            continue;
+
+            uint neighbourKey = SpatialKeys[neighbourIndex];
+            // Exit if no longer looking at correct bin
+            if (neighbourKey != key)
+            break;
+            //-----------------------------------
+            float3 Direction = PredictedPosition[neighbourIndex]-MyPosition;
+            float sqrDstToNeighbour = dot(Direction,Direction);
+            float Distance = sqrt(sqrDstToNeighbour);
+
+            if (sqrDstToNeighbour <= sqrRadius) {
+                float NeighborAge = Points[neighbourIndex].age;
+                float Influence = SmoothingKernelPoly63D(Distance,SmoothingRadius);
+                age += (NeighborAge-age)*Influence*0.00001;
+            }
+            //-----------------------------------
+        }
+    }
+    return age;
+}
 float3 CalcVelocity (int PointID) {
     LavaPoint Point = Points[PointID];
     const float3 Gravity = float3(0,-9.81,0);
@@ -288,7 +328,8 @@ void Simulation (uint3 id : SV_DispatchThreadID) {
     CurPoint = ReColor(id.x);
     CurPoint.Velocity = CalcVelocity(id.x);
     CurPoint.Position = CalcPosition(CurPoint);
-    CurPoint.age += TimePassed;
+    CurPoint.age += TimePassed ;
+    CurPoint.age = CurPoint.age+ CalcAge(id.x)*TimePassed*TemperatureExchangeSpeedModifier;
     Points[id.x] = HandleCollision(CurPoint);
 } 
 [numthreads(1,1,1)]

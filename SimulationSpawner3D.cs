@@ -30,6 +30,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public int XCount;
     public int YCount;
     public int ZCount;
+    public float TemperatureExchangeSpeedModifier = 0f;
     public float ParticlePerSecond = 180;
     public float BoundsWidth = 14;
     public float BoundsHeight = 8;
@@ -263,6 +264,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloats("SDF_Scale", SDF_scale.x, SDF_scale.y, SDF_scale.z);
         ComputeShader.SetInts("SDFValueCount", SDFValueCount, SDFValueCount, SDFValueCount);
         ComputeShader.SetFloats("SDFSize", SDFSize, SDFSize, SDFSize);
+        ComputeShader.SetFloat("TemperatureExchangeSpeedModifier", TemperatureExchangeSpeedModifier);
         Vector3 Pos = LavaGenerator.gameObject.transform.position;
         ComputeShader.SetFloats("Spawnpoint", Pos.x, Pos.y, Pos.z);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
