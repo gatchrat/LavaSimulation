@@ -332,12 +332,13 @@ void Simulation (uint3 id : SV_DispatchThreadID) {
     CurPoint.age = CurPoint.age+ CalcAge(id.x)*TimePassed*TemperatureExchangeSpeedModifier;
     Points[id.x] = HandleCollision(CurPoint);
 } 
+int ActiveParticles;
 [numthreads(1,1,1)]
 void Activate (uint3 id : SV_DispatchThreadID) {
     if(ParticleToActivate == 0) {
         return;
     }
-    for(int i = 0; i < ParticleCount; i++) {
+    for(int i = ActiveParticles; i < ParticleCount; i++) {
         if(Points[i].active == 0) {
             Points[i].active = 1;
             Points[i].Position = Spawnpoint;
