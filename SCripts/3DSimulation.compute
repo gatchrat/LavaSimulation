@@ -8,7 +8,6 @@
 #pragma kernel ReorderCopyBack
 #pragma kernel Reorder
 #pragma kernel SortHashesNeu
-#pragma kernel InitializeOffsets
 #pragma kernel  CalculateOffsets 
 #pragma kernel Activate
 
@@ -508,15 +507,6 @@ void ReorderCopyBack(uint3 id : SV_DispatchThreadID) {
 StructuredBuffer<uint> SortedKeys;
 RWStructuredBuffer<uint> Offsets;
 uint numInputs;
-
-[numthreads(256, 1, 1)]
-void InitializeOffsets(uint3 id : SV_DispatchThreadID) {
-    if (id.x >= numInputs) {
-        return;
-    }
-    Offsets[id.x] = numInputs;
-}
-
 [numthreads(256, 1, 1)]
 void CalculateOffsets(uint3 id : SV_DispatchThreadID) {
     if (id.x >= numInputs) {

@@ -148,10 +148,6 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "SortedIndices", sortedIndices);
 
-        CurrentKernel = ComputeShader.FindKernel("InitializeOffsets");
-        ComputeShader.SetBuffer(CurrentKernel, "SortedKeys", spatialKeys);
-        ComputeShader.SetBuffer(CurrentKernel, "Offsets", spatialOffsets);
-
         CurrentKernel = ComputeShader.FindKernel("CalculateOffsets");
         ComputeShader.SetBuffer(CurrentKernel, "SortedKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "Offsets", spatialOffsets);
@@ -210,13 +206,15 @@ public class SimulationSpawner3D : MonoBehaviour
 
         CurrentKernel = ComputeShader.FindKernel("UpdateSpatialHash");
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
+        //SpatialKeys[id.x] = key;
 
         CurrentKernel = ComputeShader.FindKernel("SortHashesNeu");
         ComputeShader.SetInt("numEntries", Points.Length);
+        //Sorts the hash values, but also sorts the index array, so we keep track of witch point has which hash
         // Launch each step of the sorting algorithm (once the previous step is complete)
         // Number of steps = [log2(n) * (log2(n) + 1)] / 2
         // where n = nearest power of 2 that is greater or equal to the number of inputs
-        int numStages = (int)Math.Log(Mathf.NextPowerOfTwo(Points.Length), 2); //POINTS LENGTH MUSS POW OF 2 SEIN???
+        int numStages = (int)Math.Log(Mathf.NextPowerOfTwo(Points.Length), 2);
         for (int stageIndex = 0; stageIndex < numStages; stageIndex++)
         {
             for (int stepIndex = 0; stepIndex < stageIndex + 1; stepIndex++)
@@ -231,21 +229,19 @@ public class SimulationSpawner3D : MonoBehaviour
                 ComputeShader.Dispatch(CurrentKernel, Points.Length / 2, 1, 1);
             }
         }
-        CurrentKernel = ComputeShader.FindKernel("InitializeOffsets");
-        ComputeShader.SetInt("numInputs", Points.Length);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
-
+        // Saves for each occuring hash value, where in the array the hash starts, end is found by walking each time
+        //Offsets[key] = index
         CurrentKernel = ComputeShader.FindKernel("CalculateOffsets");
         ComputeShader.SetInt("numInputs", Points.Length);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
 
-        // Reorder kernel
+        // Generates a sorted array of points by going over the hash indexes
         CurrentKernel = ComputeShader.FindKernel("Reorder");
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 1024, 1, 1);
 
-        // Reorder copyback kernel
+        // Overwrite the point array with the ordered one
         CurrentKernel = ComputeShader.FindKernel("ReorderCopyBack");
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 1024, 1, 1);
 
         CurrentKernel = ComputeShader.FindKernel("DensityCache");
         ComputeShader.SetFloat("TimePassed", TimeStep);
