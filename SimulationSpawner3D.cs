@@ -199,13 +199,13 @@ public class SimulationSpawner3D : MonoBehaviour
         }
 
         CurrentKernel = ComputeShader.FindKernel("PredictPositions");
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
 
         ComputeShader.SetInt("ParticleCount", Points.Length);
         ComputeShader.SetFloat("SmoothingRadius", SmoothingRadius);
 
         CurrentKernel = ComputeShader.FindKernel("UpdateSpatialHash");
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
         //SpatialKeys[id.x] = key;
 
         CurrentKernel = ComputeShader.FindKernel("SortHashesNeu");
@@ -233,19 +233,19 @@ public class SimulationSpawner3D : MonoBehaviour
         //Offsets[key] = index
         CurrentKernel = ComputeShader.FindKernel("CalculateOffsets");
         ComputeShader.SetInt("numInputs", Points.Length);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
 
         // Generates a sorted array of points by going over the hash indexes
         CurrentKernel = ComputeShader.FindKernel("Reorder");
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 1024, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
 
         // Overwrite the point array with the ordered one
         CurrentKernel = ComputeShader.FindKernel("ReorderCopyBack");
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 1024, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
 
         CurrentKernel = ComputeShader.FindKernel("DensityCache");
         ComputeShader.SetFloat("TimePassed", TimeStep);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
 
         //Actual Simulation Step
         CurrentKernel = ComputeShader.FindKernel("Simulation");
@@ -263,7 +263,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloat("TemperatureExchangeSpeedModifier", TemperatureExchangeSpeedModifier);
         Vector3 Pos = LavaGenerator.gameObject.transform.position;
         ComputeShader.SetFloats("Spawnpoint", Pos.x, Pos.y, Pos.z);
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 8, 1, 1);
+        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
     }
     private void RenderLava()
     {
