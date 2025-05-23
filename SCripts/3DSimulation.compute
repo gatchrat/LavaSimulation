@@ -262,10 +262,8 @@ float3 CalcVelocity (int PointID) {
     const float3 Gravity = float3(0,-9.81,0);
     Point.Velocity+=Gravity*TimePassed;
     //F =a/m where m is the density because fluid
-    if(Point.age > 0) {
-        Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
-        Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
-    }
+    Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
+    Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
     return Point.Velocity;
 }
 
