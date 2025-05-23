@@ -35,6 +35,7 @@ float3 Spawnpoint;
 float3 SDF_OffSet;
 float3 SDF_Scale;
 float TemperatureExchangeSpeedModifier;
+float MaxAge;
 RWStructuredBuffer<float3> PredictedPosition;
 RWStructuredBuffer<float> DensityValuesBuffer;
 RWTexture3D<float> DensityTexture; // 3D Density Field
@@ -261,8 +262,10 @@ float3 CalcVelocity (int PointID) {
     const float3 Gravity = float3(0,-9.81,0);
     Point.Velocity+=Gravity*TimePassed;
     //F =a/m where m is the density because fluid
-    Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
-    Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
+    if(Point.age > 0) {
+        Point.Velocity +=CalcPressureForce(PointID)*TimePassed;
+        Point.Velocity +=CalcViscosityForce(PointID)*TimePassed;
+    }
     return Point.Velocity;
 }
 
@@ -282,10 +285,10 @@ LavaPoint HandleCollision(LavaPoint Point) {
         Point.Position.y = 0;
         Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollisionFloor,Point.Velocity.z);
     }
-    if (Point.Position.y > BoundsHeight) {
+    /*if (Point.Position.y > BoundsHeight) {
         Point.Position.y = BoundsHeight;
         Point.Velocity = float3(Point.Velocity.x,-Point.Velocity.y*EnergyLossOnCollisionFloor,Point.Velocity.z);
-    }
+    }*/
     if (Point.Position.x < -BoundsWidth/2) {
         Point.Position.x = -BoundsWidth/2;
         Point.Velocity = float3(-Point.Velocity.x*EnergyLossOnCollision,Point.Velocity.y,Point.Velocity.z);
@@ -322,7 +325,7 @@ void Simulation (uint3 id : SV_DispatchThreadID) {
     if(CurPoint.active == 0) {
         return;
     }
-    if(CurPoint.age > 100) {
+    if(CurPoint.age > MaxAge) {
         return;
     }
     CurPoint = ReColor(id.x);
@@ -341,8 +344,8 @@ void Activate (uint3 id : SV_DispatchThreadID) {
     for(int i = ActiveParticles; i < ParticleCount; i++) {
         if(Points[i].active == 0) {
             Points[i].active = 1;
-            Points[i].Position = Spawnpoint;
-            Points[i].Velocity = float3(2,10,0);
+            Points[i].Position = Spawnpoint+((float3)offsets3D[i%27])/5;
+            Points[i].Velocity = float3(-1,5,2);
             ParticleToActivate -= 1;
             if(ParticleToActivate == 0) {
                 return;

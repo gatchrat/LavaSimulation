@@ -30,6 +30,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public int XCount;
     public int YCount;
     public int ZCount;
+    public float MaxAge;
     public float TemperatureExchangeSpeedModifier = 0f;
     public float ParticlePerSecond = 180;
     public float BoundsWidth = 14;
@@ -255,6 +256,7 @@ public class SimulationSpawner3D : MonoBehaviour
         //Actual Simulation Step
         CurrentKernel = ComputeShader.FindKernel("Simulation");
         ComputeShader.SetFloat("BoundsHeight", BoundsHeight);
+        ComputeShader.SetFloat("MaxAge", MaxAge);
         ComputeShader.SetFloat("BoundsDepth", BoundsDepth);
         ComputeShader.SetFloat("BoundsWidth", BoundsWidth);
         ComputeShader.SetFloat("ViscosityMultiplier", Viscosity);

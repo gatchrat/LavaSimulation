@@ -12,7 +12,7 @@ public class CopyPos : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        this.transform.position = new Vector3(refScript.SDF_Pos.x, refScript.SDF_Pos.y, refScript.SDF_Pos.z);
+        this.transform.position = new Vector3(refScript.SDF_Pos.x + 0.3f, refScript.SDF_Pos.y, refScript.SDF_Pos.z);
         this.transform.localScale = new Vector3(refScript.SDF_scale.x, refScript.SDF_scale.y, refScript.SDF_scale.z);
     }
 }
