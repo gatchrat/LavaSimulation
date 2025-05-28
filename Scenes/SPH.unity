@@ -1215,6 +1215,7 @@ GameObject:
   - component: {fileID: 330585545}
   - component: {fileID: 330585544}
   - component: {fileID: 330585547}
+  - component: {fileID: 330585548}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1340,6 +1341,23 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+--- !u!114 &330585548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 330585543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1132d2a9a4aa31c42a518eb12403265b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  movementSpeed: 10
+  fastMovementSpeed: 100
+  freeLookSensitivity: 3
+  zoomSensitivity: 10
+  fastZoomSensitivity: 50
 --- !u!1 &336872036
 GameObject:
   m_ObjectHideFlags: 0
@@ -1954,19 +1972,19 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
+      - m_Target: {fileID: 1007944073}
+        m_TargetAssemblyTypeName: SPH_UI, Assembly-CSharp
+        m_MethodName: ToggleFreeCam
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  m_IsOn: 1
+  m_IsOn: 0
 --- !u!1 &470137741
 GameObject:
   m_ObjectHideFlags: 0
@@ -4632,7 +4650,7 @@ MonoBehaviour:
   LavaGenerator: {fileID: 1275170219}
   colourMap:
     serializedVersion: 2
-    key0: {r: 0.122641504, g: 0.05501631, b: 0.019090425, a: 1}
+    key0: {r: 0, g: 0, b: 0, a: 1}
     key1: {r: 0.764151, g: 0.4323628, b: 0.032440357, a: 1}
     key2: {r: 0.9339623, g: 0.86872935, b: 0.110137045, a: 0}
     key3: {r: 1, g: 0.9584457, b: 0, a: 0}
@@ -4641,7 +4659,7 @@ MonoBehaviour:
     key6: {r: 0, g: 0, b: 0, a: 0}
     key7: {r: 0, g: 0, b: 0, a: 0}
     ctime0: 5204
-    ctime1: 23708
+    ctime1: 30455
     ctime2: 46838
     ctime3: 65535
     ctime4: 0
@@ -5183,6 +5201,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Simulation: {fileID: 857152298}
   Spawner: {fileID: 1275170219}
+  MainCam: {fileID: 330585543}
   ParticleCountText: {fileID: 1053728846}
   MaxAge: {fileID: 496282829}
   TempExchange: {fileID: 982386330}

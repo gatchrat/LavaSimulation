@@ -8,6 +8,7 @@ public class SPH_UI : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     public SimulationSpawner3D Simulation;
     public LavaGenerator Spawner;
+    public GameObject MainCam;
     public TMP_InputField ParticleCountText;
     public TMP_InputField MaxAge;
     public TMP_InputField TempExchange;
@@ -20,9 +21,12 @@ public class SPH_UI : MonoBehaviour
     public TMP_InputField SpawnPosX;
     public TMP_InputField SpawnPosY;
     public TMP_InputField SpawnPosZ;
+    private Boolean FreeCam = false;
+    private Vector3 camPos;
+    private Quaternion camRot;
     void Start()
     {
-        ParticleCountText.text = Simulation.ParticlePerSecond.ToString();
+        ParticleCountText.text = (Simulation.XCount * Simulation.YCount * Simulation.ZCount).ToString();
         MaxAge.text = Simulation.MaxAge.ToString();
         TempExchange.text = Simulation.TemperatureExchangeSpeedModifier.ToString();
         ParticlesPerSecond.text = Simulation.ParticlePerSecond.ToString();
@@ -34,6 +38,9 @@ public class SPH_UI : MonoBehaviour
         SpawnPosX.text = Spawner.gameObject.transform.position.x.ToString();
         SpawnPosY.text = Spawner.gameObject.transform.position.y.ToString();
         SpawnPosZ.text = Spawner.gameObject.transform.position.z.ToString();
+        MainCam.GetComponent<FreeCam>().enabled = FreeCam;
+        camPos = MainCam.transform.position;
+        camRot = MainCam.transform.rotation;
     }
     public void SetMaxAge()
     {
@@ -125,5 +132,15 @@ public class SPH_UI : MonoBehaviour
     {
         string currentSceneName = SceneManager.GetActiveScene().name;
         SceneManager.LoadScene(currentSceneName);
+    }
+    public void ToggleFreeCam()
+    {
+        FreeCam = !FreeCam;
+        MainCam.GetComponent<FreeCam>().enabled = FreeCam;
+        if (!FreeCam)
+        {
+            MainCam.transform.position = camPos;
+            MainCam.transform.rotation = camRot;
+        }
     }
 }
