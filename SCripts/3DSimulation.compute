@@ -69,7 +69,7 @@ float SampleSDF(float3 posWorld) {
 }
 
 float3 calculateSDFNormal(float3 pos) {
-    const float s = 4;
+    const float s = 0.1;
     float3 offsetX = int3(1, 0, 0) * s;
     float3 offsetY = int3(0, 1, 0) * s;
     float3 offsetZ = int3(0, 0, 1) * s;
@@ -87,7 +87,7 @@ float3 WorldToSDF(float3 pos) {
     return pos;
 }
 void ResolveCollisionsSDF(inout float3 pos, inout float3 vel, float collisionDamping) {
-    float dstFromSurface = SampleSDF(WorldToSDF(pos));
+    float dstFromSurface = SampleSDF(WorldToSDF(pos))-0.1;
     if (dstFromSurface < 0) {
         float3 up = calculateSDFNormal(WorldToSDF(pos)); // Richtung zu
         pos -= up * min(0, dstFromSurface);
@@ -250,7 +250,7 @@ float CalcAge(int PointID) {
             if (sqrDstToNeighbour <= sqrRadius) {
                 float NeighborAge = Points[neighbourIndex].age;
                 float Influence = SmoothingKernelPoly63D(Distance,SmoothingRadius);
-                age += (NeighborAge-age)*Influence*0.00001;
+                age += (NeighborAge-Point.age)*Influence*0.00001;
             }
             //-----------------------------------
         }
@@ -343,7 +343,7 @@ void Activate (uint3 id : SV_DispatchThreadID) {
         if(Points[i].active == 0) {
             Points[i].active = 1;
             Points[i].Position = Spawnpoint+((float3)offsets3D[i%27])/5;
-            Points[i].Velocity = float3(-1,5,2);
+            Points[i].Velocity = float3(2,5,0.1);
             ParticleToActivate -= 1;
             if(ParticleToActivate == 0) {
                 return;
