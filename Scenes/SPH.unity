@@ -4680,9 +4680,7 @@ MonoBehaviour:
     m_NumAlphaKeys: 2
   SpawnMode: 2
   BilboardShader: {fileID: 4800000, guid: 30be28aaa0b622e4aa0218550cdb492c, type: 3}
-  XCount: 64
-  YCount: 32
-  ZCount: 32
+  ParticleCount: 65536
   MaxAge: 40
   TemperatureExchangeSpeedModifier: 46
   ParticlePerSecond: 360

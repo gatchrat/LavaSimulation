@@ -1,16 +1,17 @@
+using System;
 using UnityEngine;
 
 public class LavaGenerator : MonoBehaviour
 {
     public LavaPoint[] Points;
-    public LavaPoint[] SpawnLavaAtOnce(int XCount, int YCount, int ZCount)
+    public LavaPoint[] SpawnLavaAtOnce(int Count)
     {
-        Points = new LavaPoint[XCount * YCount * ZCount];
-        for (int x = 0; x < XCount; x++)
+        Points = new LavaPoint[Count * Count * Count];
+        for (int x = 0; x < Count; x++)
         {
-            for (int y = 0; y < YCount; y++)
+            for (int y = 0; y < Count; y++)
             {
-                for (int z = 0; z < ZCount; z++)
+                for (int z = 0; z < Count; z++)
                 {
                     LavaPoint Point = new LavaPoint
                     {
@@ -19,21 +20,21 @@ public class LavaGenerator : MonoBehaviour
                         age = 0f
                     };
 
-                    Point.Position = new Vector3((-XCount / 2 + x) * 0.15f, y * 0.15f + 0.5f, (-ZCount / 2 + z) * 0.15f);
+                    Point.Position = new Vector3((-Count / 2 + x) * 0.15f, y * 0.15f + 0.5f, (-Count / 2 + z) * 0.15f);
 
-                    Points[z + y * ZCount + x * ZCount * YCount] = Point;
+                    Points[z + y * Count + x * Count * Count] = Point;
                 }
             }
         }
         return Points;
     }
-    public LavaPoint[] SpawnLavaAtOnceRandom(int XCount, int YCount, int ZCount, float BoundsWidth, float BoundsHeight, float BoundsDepth)
+    public LavaPoint[] SpawnLavaAtOnceRandom(int Count, float BoundsWidth, float BoundsHeight, float BoundsDepth)
     {
-        for (int x = 0; x < XCount; x++)
+        for (int x = 0; x < Count; x++)
         {
-            for (int y = 0; y < YCount; y++)
+            for (int y = 0; y < Count; y++)
             {
-                for (int z = 0; z < ZCount; z++)
+                for (int z = 0; z < Count; z++)
                 {
                     LavaPoint Point = new LavaPoint
                     {
@@ -47,34 +48,27 @@ public class LavaGenerator : MonoBehaviour
                         UnityEngine.Random.Range(0, BoundsHeight) * 0.1f,
                         UnityEngine.Random.Range(-BoundsDepth / 2, BoundsDepth / 2) * 0.1f);
 
-                    Points[z + y * ZCount + x * ZCount * YCount] = Point;
+                    Points[z + y * Count + x * Count * Count] = Point;
                 }
             }
         }
         return Points;
     }
-    public LavaPoint[] InitInactive(int XCount, int YCount, int ZCount)
+    public LavaPoint[] InitInactive(int Count)
     {
-
-        Points = new LavaPoint[XCount * YCount * ZCount];
-        for (int x = 0; x < XCount; x++)
+        Points = new LavaPoint[Count];
+        for (int z = 0; z < Count; z++)
         {
-            for (int y = 0; y < YCount; y++)
+            LavaPoint Point = new LavaPoint
             {
-                for (int z = 0; z < ZCount; z++)
-                {
-                    LavaPoint Point = new LavaPoint
-                    {
-                        Color = Color.white,
-                        active = 0,
-                        age = 0f
-                    };
+                Color = Color.white,
+                active = 0,
+                age = 0f
+            };
 
-                    Point.Position = new Vector3((-XCount / 2 + x) * 0.15f, y * 0.15f + 0.5f, (-ZCount / 2 + z) * 0.15f) + new Vector3(99, 99, 99);
+            Point.Position = new Vector3((-Count / 2) * 0.15f, 0, (-Count / 2 + z) * 0.15f) + new Vector3(99, 99, 99);
 
-                    Points[z + y * ZCount + x * ZCount * YCount] = Point;
-                }
-            }
+            Points[z] = Point;
         }
         return Points;
 

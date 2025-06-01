@@ -27,9 +27,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public Gradient colourMap;
     public SpawnMode SpawnMode;
     public Shader BilboardShader;
-    public int XCount;
-    public int YCount;
-    public int ZCount;
+    public int ParticleCount;
     public float MaxAge;
     public float TemperatureExchangeSpeedModifier = 0f;
     public float ParticlePerSecond = 180;
@@ -59,17 +57,14 @@ public class SimulationSpawner3D : MonoBehaviour
     private LavaPoint[] Points;
     private int SDFValueCount;
     private float SDFSize;
+    private bool Restarting = false;
     Mesh mesh;
     private float TimePassedOverall = 0f;
     private int ParticleActivated = 0;
 
     void Start()
     {
-        LoadSDF();
-        InitLava();
-        PredictedPositions = new Vector3[Points.Length];
-        Mesh = GenerateQuadMesh();
-        InitBuffers();
+        InitStuff();
     }
     void Update()
     {
@@ -85,19 +80,39 @@ public class SimulationSpawner3D : MonoBehaviour
     {
         DisposeBuffers();
     }
+    void InitStuff()
+    {
+        LoadSDF();
+        InitLava();
+        PredictedPositions = new Vector3[Points.Length];
+        InitBuffers();
+
+    }
+    public void Restart(int Count)
+    {
+        Restarting = true;
+        ParticleCount = Count;
+    }
+    private void Restart()
+    {
+        DisposeBuffers();
+        InitStuff();
+        TimePassedOverall = 0f;
+        ParticleActivated = 0;
+    }
 
     private void InitLava()
     {
         switch (SpawnMode)
         {
             case SpawnMode.AtOnce:
-                Points = LavaGenerator.SpawnLavaAtOnce(XCount, YCount, ZCount);
+                Points = LavaGenerator.SpawnLavaAtOnce(ParticleCount);
                 break;
             case SpawnMode.AtOnceRandom:
-                Points = LavaGenerator.SpawnLavaAtOnceRandom(XCount, YCount, ZCount, BoundsWidth, BoundsHeight, BoundsDepth);
+                Points = LavaGenerator.SpawnLavaAtOnceRandom(ParticleCount, BoundsWidth, BoundsHeight, BoundsDepth);
                 break;
             case SpawnMode.Flow:
-                Points = LavaGenerator.InitInactive(XCount, YCount, ZCount);
+                Points = LavaGenerator.InitInactive(ParticleCount);
                 break;
         }
     }
@@ -272,11 +287,6 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloats("Spawnpoint", Pos.x, Pos.y, Pos.z);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
     }
-    private void RenderLava()
-    {
-        LavaBuffer.GetData(Points);
-        RenderLavaNormal();
-    }
     private void DisposeBuffers()
     {
         //Free Up Memory, otherwise free memory leaks :)
@@ -292,8 +302,16 @@ public class SimulationSpawner3D : MonoBehaviour
         sortTarget_predictedPositionsBuffer.Dispose();
     }
     //----------------------------------RENDERER------------------------------------------
-    private void RenderLavaNormal()
+    private void RenderLava()
     {
+        //Restart at the end of the update loop since we dont know when the restart is triggered and the buffers may be in active use
+        if (Restarting)
+        {
+            Restarting = false;
+            Restart();
+            return;
+        }
+        LavaBuffer.GetData(Points);
         Bounds bounds = new Bounds(Vector3.zero, Vector3.one * 10000);
 
 

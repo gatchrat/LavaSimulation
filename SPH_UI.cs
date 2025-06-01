@@ -26,7 +26,7 @@ public class SPH_UI : MonoBehaviour
     private Quaternion camRot;
     void Start()
     {
-        ParticleCountText.text = (Simulation.XCount * Simulation.YCount * Simulation.ZCount).ToString();
+        ParticleCountText.text = Simulation.ParticleCount.ToString();
         MaxAge.text = Simulation.MaxAge.ToString();
         TempExchange.text = Simulation.TemperatureExchangeSpeedModifier.ToString();
         ParticlesPerSecond.text = Simulation.ParticlePerSecond.ToString();
@@ -130,8 +130,18 @@ public class SPH_UI : MonoBehaviour
     }
     public void Reload()
     {
-        string currentSceneName = SceneManager.GetActiveScene().name;
-        SceneManager.LoadScene(currentSceneName);
+        Debug.Log("Restart");
+        int i;
+        bool isNum = int.TryParse(ParticleCountText.text, out i);
+        if (isNum)
+        {
+            Simulation.Restart(i);
+        }
+        else
+        {
+            Simulation.Restart(65536);
+        }
+
     }
     public void ToggleFreeCam()
     {
