@@ -153,4 +153,8 @@ public class SPH_UI : MonoBehaviour
             MainCam.transform.rotation = camRot;
         }
     }
+    public void TogglePause()
+    {
+        Simulation.Paused = !Simulation.Paused;
+    }
 }

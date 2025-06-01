@@ -61,6 +61,7 @@ public class SimulationSpawner3D : MonoBehaviour
     Mesh mesh;
     private float TimePassedOverall = 0f;
     private int ParticleActivated = 0;
+    public Boolean Paused = false;
 
     void Start()
     {
@@ -70,9 +71,12 @@ public class SimulationSpawner3D : MonoBehaviour
     {
         //Run at atleast 60fps, slow down the simulation if framerate not reached to prevent explosion
         //Run 3 Simulation Steps per frame to improve Timestep size while not being slowed down by the render
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
-        ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        if (!Paused)
+        {
+            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+        }
         RenderLava();
     }
 
