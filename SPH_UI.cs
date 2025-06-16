@@ -2,6 +2,7 @@ using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class SPH_UI : MonoBehaviour
 {
@@ -12,12 +13,18 @@ public class SPH_UI : MonoBehaviour
     public TMP_InputField ParticleCountText;
     public TMP_InputField MaxAge;
     public TMP_InputField TempExchange;
-    public TMP_InputField ParticlesPerSecond;
-    public TMP_InputField Density;
-    public TMP_InputField Pressure;
-    public TMP_InputField NearPressure;
-    public TMP_InputField SmoothingRadius;
-    public TMP_InputField Viscosity;
+    public TMP_Text ParticlesPerSecondText;
+    public Slider ParticlesPerSecond;
+    public TMP_Text DensityText;
+    public Slider Density;
+    public TMP_Text PressureText;
+    public Slider Pressure;
+    public TMP_Text NearPressureText;
+    public Slider NearPressure;
+    public TMP_Text SmoothingRadiusText;
+    public Slider SmoothingRadius;
+    public TMP_Text ViscosityText;
+    public Slider Viscosity;
     public TMP_InputField SpawnPosX;
     public TMP_InputField SpawnPosY;
     public TMP_InputField SpawnPosZ;
@@ -29,12 +36,18 @@ public class SPH_UI : MonoBehaviour
         ParticleCountText.text = Simulation.ParticleCount.ToString();
         MaxAge.text = Simulation.MaxAge.ToString();
         TempExchange.text = Simulation.TemperatureExchangeSpeedModifier.ToString();
-        ParticlesPerSecond.text = Simulation.ParticlePerSecond.ToString();
-        Density.text = Simulation.TargetDensity.ToString();
-        Pressure.text = Simulation.PressureMultiplier.ToString();
-        NearPressure.text = Simulation.NearPressureMultiplier.ToString();
-        SmoothingRadius.text = Simulation.SmoothingRadius.ToString();
-        Viscosity.text = Simulation.Viscosity.ToString();
+        ParticlesPerSecond.value = Simulation.ParticlePerSecond;
+        SetParticlePerSecond();
+        Density.value = Simulation.TargetDensity;
+        SetDensity();
+        Pressure.value = Simulation.PressureMultiplier;
+        SetPressure();
+        NearPressure.value = Simulation.NearPressureMultiplier;
+        SetNearPressure();
+        Viscosity.value = Simulation.Viscosity;
+        SetViscosity();
+        SmoothingRadius.value = Simulation.SmoothingRadius;
+        SetSmoothingRadius();
         SpawnPosX.text = Spawner.gameObject.transform.position.x.ToString();
         SpawnPosY.text = Spawner.gameObject.transform.position.y.ToString();
         SpawnPosZ.text = Spawner.gameObject.transform.position.z.ToString();
@@ -62,57 +75,34 @@ public class SPH_UI : MonoBehaviour
     }
     public void SetParticlePerSecond()
     {
-        int i = 0;
-        bool isNum = int.TryParse(ParticlesPerSecond.text, out i);
-        if (isNum)
-        {
-            Simulation.ParticlePerSecond = i;
-        }
+        Simulation.ParticlePerSecond = ParticlesPerSecond.value;
+        ParticlesPerSecondText.text = "Amount/s " + ParticlesPerSecond.value;
     }
     public void SetDensity()
     {
-        float i = 0;
-        bool isNum = float.TryParse(Density.text, out i);
-        if (isNum)
-        {
-            Simulation.TargetDensity = i;
-        }
+        Simulation.TargetDensity = Density.value;
+        DensityText.text = "Density " + Density.value;
     }
     public void SetPressure()
     {
-        float i = 0;
-        bool isNum = float.TryParse(Pressure.text, out i);
-        if (isNum)
-        {
-            Simulation.PressureMultiplier = i;
-        }
+
+        Simulation.PressureMultiplier = Pressure.value;
+        PressureText.text = "Pressure " + Pressure.value;
     }
     public void SetNearPressure()
     {
-        float i = 0;
-        bool isNum = float.TryParse(NearPressure.text, out i);
-        if (isNum)
-        {
-            Simulation.NearPressureMultiplier = i;
-        }
+        Simulation.NearPressureMultiplier = NearPressure.value;
+        NearPressureText.text = "Near Pressure " + NearPressure.value;
     }
     public void SetSmoothingRadius()
     {
-        float i = 0;
-        bool isNum = float.TryParse(SmoothingRadius.text, out i);
-        if (isNum)
-        {
-            Simulation.SmoothingRadius = i;
-        }
+        Simulation.SmoothingRadius = SmoothingRadius.value;
+        SmoothingRadiusText.text = "Smoothing Radius " + SmoothingRadius.value;
     }
     public void SetViscosity()
     {
-        float i = 0;
-        bool isNum = float.TryParse(Viscosity.text, out i);
-        if (isNum)
-        {
-            Simulation.Viscosity = i;
-        }
+        Simulation.Viscosity = Viscosity.value;
+        ViscosityText.text = "Viscosity " + Viscosity.value;
     }
     public void SetSpawnerPosition()
     {
@@ -156,5 +146,11 @@ public class SPH_UI : MonoBehaviour
     public void TogglePause()
     {
         Simulation.Paused = !Simulation.Paused;
+    }
+
+    public void ResetValues()
+    {
+        Simulation.DisposeBuffers();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

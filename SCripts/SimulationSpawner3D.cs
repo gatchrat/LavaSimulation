@@ -291,7 +291,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetFloats("Spawnpoint", Pos.x, Pos.y, Pos.z);
         ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
     }
-    private void DisposeBuffers()
+    public void DisposeBuffers()
     {
         //Free Up Memory, otherwise free memory leaks :)
         LavaBuffer.Dispose();
@@ -343,7 +343,6 @@ public class SimulationSpawner3D : MonoBehaviour
         string txt = mytxtData.text;
         string[] Values = txt.Split(' ');
         SDFValueCount = int.Parse(Values[0]);
-        Debug.Log(SDFValueCount);
         SDFSize = float.Parse(Values[3]);
 
         SDFTexture = new RenderTexture(SDFValueCount, SDFValueCount, 0)
