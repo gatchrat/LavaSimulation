@@ -60,8 +60,9 @@ public class SimulationSpawner3D : MonoBehaviour
     private bool Restarting = false;
     Mesh mesh;
     private float TimePassedOverall = 0f;
-    private int ParticleActivated = 0;
+    public int ParticleActivated = 0;
     public Boolean Paused = false;
+    public Boolean Example2D = false;
 
     void Start()
     {
@@ -215,6 +216,7 @@ public class SimulationSpawner3D : MonoBehaviour
             ComputeShader.SetInt("ActiveParticles", ParticleActivated);
             ParticleActivated += ParticleToActivate;
             ComputeShader.SetFloat("TimePassed", TimeStep);
+            ComputeShader.SetBool("Example2D", Example2D);
             ComputeShader.SetInt("ParticleToActivate", ParticleToActivate);
             ComputeShader.Dispatch(CurrentKernel, 1, 1, 1);
         }
@@ -274,6 +276,7 @@ public class SimulationSpawner3D : MonoBehaviour
 
         //Actual Simulation Step
         CurrentKernel = ComputeShader.FindKernel("Simulation");
+        ComputeShader.SetBool("Example2D", Example2D);
         ComputeShader.SetFloat("BoundsHeight", BoundsHeight);
         ComputeShader.SetFloat("MaxAge", MaxAge);
         ComputeShader.SetFloat("BoundsDepth", BoundsDepth);

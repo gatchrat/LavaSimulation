@@ -13,6 +13,7 @@
 
 #include "./Tools.compute"
 #include "./SpatialHash3D.compute"
+#include "./2DOffset.compute"
 
 float TimePassed;
 float TargetDensity; // How thick is the Liquid
@@ -36,6 +37,8 @@ float3 SDF_OffSet;
 float3 SDF_Scale;
 float TemperatureExchangeSpeedModifier;
 float MaxAge;
+bool Example2D;
+
 RWStructuredBuffer<float3> PredictedPosition;
 RWStructuredBuffer<float> DensityValuesBuffer;
 RWTexture3D<float> DensityTexture; // 3D Density Field
@@ -305,8 +308,9 @@ LavaPoint HandleCollision(LavaPoint Point) {
     }
     float3 Position = Point.Position;
     float3 Velocity = Point.Velocity;
-
-    ResolveCollisionsSDF(Position, Velocity,EnergyLossOnCollision);
+    if(!Example2D) {
+        ResolveCollisionsSDF(Position, Velocity,EnergyLossOnCollision);
+    }
 
     Point.Position = Position;
     Point.Velocity = Velocity;
@@ -333,20 +337,36 @@ void Simulation (uint3 id : SV_DispatchThreadID) {
     CurPoint.age = CurPoint.age+ CalcAge(id.x)*TimePassed*TemperatureExchangeSpeedModifier;
     Points[id.x] = HandleCollision(CurPoint);
 } 
+
 int ActiveParticles;
 [numthreads(1,1,1)]
 void Activate (uint3 id : SV_DispatchThreadID) {
     if(ParticleToActivate == 0) {
         return;
-    }
-    for(int i = ActiveParticles; i < ParticleCount; i++) {
-        if(Points[i].active == 0) {
-            Points[i].active = 1;
-            Points[i].Position = Spawnpoint+((float3)offsets3D[i%27])/5;
-            Points[i].Velocity = float3(2,5,0.1);
-            ParticleToActivate -= 1;
-            if(ParticleToActivate == 0) {
-                return;
+    } 
+    if(Example2D) {
+        for(int i = ActiveParticles; i < ParticleCount; i++) {
+            if(Points[i].active == 0) {
+                Points[i].active = 1;
+                Points[i].Position = Spawnpoint+((float3)offsets2D[i%9]/5);
+                Points[i].Velocity = float3(3,5,0);
+                ParticleToActivate -= 1;
+                if(ParticleToActivate == 0) {
+                    return;
+                }
+            }
+        }
+    } 
+    else {
+        for(int i = ActiveParticles; i < ParticleCount; i++) {
+            if(Points[i].active == 0) {
+                Points[i].active = 1;
+                Points[i].Position = Spawnpoint+((float3)offsets3D[i%27])/5;
+                Points[i].Velocity = float3(2,5,0.1);
+                ParticleToActivate -= 1;
+                if(ParticleToActivate == 0) {
+                    return;
+                }
             }
         }
     }
