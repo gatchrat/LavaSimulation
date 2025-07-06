@@ -25,6 +25,8 @@ public class SPH_UI : MonoBehaviour
     public Slider SmoothingRadius;
     public TMP_Text ViscosityText;
     public Slider Viscosity;
+    public TMP_Text ParticleScaleText;
+    public Slider ParticleScale;
     public TMP_InputField SpawnPosX;
     public TMP_InputField SpawnPosY;
     public TMP_InputField SpawnPosZ;
@@ -48,6 +50,8 @@ public class SPH_UI : MonoBehaviour
         SetViscosity();
         SmoothingRadius.value = Simulation.SmoothingRadius;
         SetSmoothingRadius();
+        ParticleScale.value = Simulation.RenderScale;
+        SetParticleRenderScale();
         SpawnPosX.text = Spawner.gameObject.transform.position.x.ToString();
         SpawnPosY.text = Spawner.gameObject.transform.position.y.ToString();
         SpawnPosZ.text = Spawner.gameObject.transform.position.z.ToString();
@@ -103,6 +107,11 @@ public class SPH_UI : MonoBehaviour
     {
         Simulation.Viscosity = Viscosity.value;
         ViscosityText.text = "Viscosity " + Viscosity.value;
+    }
+    public void SetParticleRenderScale()
+    {
+        Simulation.RenderScale = ParticleScale.value;
+        ParticleScaleText.text = "Render Size " + ParticleScale.value;
     }
     public void SetSpawnerPosition()
     {

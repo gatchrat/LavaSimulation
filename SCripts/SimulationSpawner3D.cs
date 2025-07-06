@@ -38,6 +38,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public float PressureMultiplier;
     public float NearPressureMultiplier;
     public float SmoothingRadius = 10f;
+    public float RenderScale = 1f;
     private Mesh Mesh;
     public float Viscosity = 1f;
 
@@ -328,7 +329,7 @@ public class SimulationSpawner3D : MonoBehaviour
         mat.SetTexture("ColourMap", gradientTexture);
 
 
-        mat.SetFloat("scale", 1 * 0.1f);
+        mat.SetFloat("scale", RenderScale * 0.1f);
         mat.SetFloat("velocityMax", 3);
         mat.SetBuffer("Points", LavaBuffer);
 
