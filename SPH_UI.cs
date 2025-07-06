@@ -37,6 +37,11 @@ public class SPH_UI : MonoBehaviour
     {
         ParticleCountText.text = Simulation.ParticleCount.ToString();
         MaxAge.text = Simulation.MaxAge.ToString();
+        if (SceneManager.GetActiveScene() == SceneManager.GetSceneByName("SPH"))
+        {
+            MaxAge.text = "30";
+        }
+        SetMaxAge();
         TempExchange.text = Simulation.TemperatureExchangeSpeedModifier.ToString();
         ParticlesPerSecond.value = Simulation.ParticlePerSecond;
         SetParticlePerSecond();
