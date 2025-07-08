@@ -1,12 +1,14 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using System;
 public class PerformanceMeasurement : MonoBehaviour
 {
     public SimulationSpawner3D refScript;
     private readonly List<int> FPSHistory = new();
     private readonly List<int> ParticleHistory = new();
     private int maxFPS;
+    private int maxParticles;
     public UILineRenderer FPSLR;
     public TextMeshProUGUI FPSText;
     public UILineRenderer ParticleLR;
@@ -60,6 +62,10 @@ public class PerformanceMeasurement : MonoBehaviour
         TimeSinceTick = 0;
         int curParticle = refScript.ParticleActivated;
         ParticleHistory.Add(curParticle);
+        if (curParticle > maxParticles)
+        {
+            maxParticles = curParticle;
+        }
         if (ParticleHistory.Count > 1000)
         {
             ParticleHistory.RemoveAt(0);
@@ -71,7 +77,7 @@ public class PerformanceMeasurement : MonoBehaviour
         float curX = 0;
         for (int i = 0; i < ParticleHistory.Count; i++)
         {
-            points.Add(new Vector2(curX, -maxY + (float)ParticleHistory[i] / (float)curParticle * maxY));
+            points.Add(new Vector2(curX, -maxY + (float)ParticleHistory[i] / (float)maxParticles * maxY));
             curX += width;
         }
         ParticleLR.points = points;
