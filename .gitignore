@@ -2,3 +2,6 @@ TextMesh Pro/
 TutorialInfo/
 Settings/
 Volcano7+Textures/
+*.meta
+*.DS_STORE
+*.abc

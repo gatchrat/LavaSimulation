@@ -37,7 +37,7 @@ public class PerformanceShuriken : MonoBehaviour
             maxFPS = curFPS;
         }
         List<Vector2> points = new();
-        float maxX = 1920;
+        float maxX = 2560;
         float maxY = 200;
         float width = maxX / (FPSHistory.Count - 1);
         float curX = 0;
@@ -65,7 +65,7 @@ public class PerformanceShuriken : MonoBehaviour
             ParticleHistory.RemoveAt(0);
         }
         List<Vector2> points = new();
-        float maxX = 1920;
+        float maxX = 2560;
         float maxY = 200;
         float width = maxX / (ParticleHistory.Count - 1);
         float curX = 0;

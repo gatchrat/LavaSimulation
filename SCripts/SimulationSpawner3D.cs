@@ -75,9 +75,9 @@ public class SimulationSpawner3D : MonoBehaviour
         //Run 3 Simulation Steps per frame to improve Timestep size while not being slowed down by the render
         if (!Paused)
         {
-            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
-            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
-            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f));
+            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 240f));
+            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 240f));
+            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 240f));
         }
         RenderLava();
     }

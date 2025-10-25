@@ -14,13 +14,54 @@ public class PerformanceMeasurement : MonoBehaviour
     public UILineRenderer ParticleLR;
     public TextMeshProUGUI ParticleText;
     private float TimeSinceTick = 0f;
+    private int tracker = 0;
 
     // Update is called once per frame
     void Update()
     {
         TimeSinceTick += Time.deltaTime;
-        UpdateFPS();
-        UpdateParticles();
+        //  UpdateFPS();
+        //  UpdateParticles();
+        LogValues();
+    }
+    private void LogValues()
+    {
+        int curParticle = refScript.ParticleActivated;
+        if (tracker == 0 && curParticle > 100)
+        {
+            tracker++;
+            Debug.Log((int)(1.0f / Time.deltaTime) + " 100");
+        }
+        if (tracker == 1 && curParticle > 1000)
+        {
+            tracker++;
+            Debug.Log((int)(1.0f / Time.deltaTime) + " 1000");
+        }
+        if (tracker == 2 && curParticle > 10000)
+        {
+            tracker++;
+            Debug.Log((int)(1.0f / Time.deltaTime) + " 10000");
+        }
+        if (tracker == 3 && curParticle > 20000)
+        {
+            tracker++;
+            Debug.Log((int)(1.0f / Time.deltaTime) + " 20000");
+        }
+        if (tracker == 4 && curParticle > 30000)
+        {
+            tracker++;
+            Debug.Log((int)(1.0f / Time.deltaTime) + " 30000");
+        }
+        if (tracker == 5 && curParticle > 40000)
+        {
+            tracker++;
+            Debug.Log((int)(1.0f / Time.deltaTime) + " 40000");
+        }
+        if (tracker == 6 && curParticle > 50000)
+        {
+            tracker++;
+            Debug.Log((int)(1.0f / Time.deltaTime) + " 50000");
+        }
     }
     private void UpdateFPS()
     {
@@ -39,7 +80,7 @@ public class PerformanceMeasurement : MonoBehaviour
             maxFPS = curFPS;
         }
         List<Vector2> points = new();
-        float maxX = 1920;
+        float maxX = 2560;
         float maxY = 200;
         float width = maxX / (FPSHistory.Count - 1);
         float curX = 0;
@@ -71,7 +112,7 @@ public class PerformanceMeasurement : MonoBehaviour
             ParticleHistory.RemoveAt(0);
         }
         List<Vector2> points = new();
-        float maxX = 1920;
+        float maxX = 2560;
         float maxY = 200;
         float width = maxX / (ParticleHistory.Count - 1);
         float curX = 0;

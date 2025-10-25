@@ -14,5 +14,8 @@ public class LevelLoader : MonoBehaviour
     public void LoadShuriken()
     {
         SceneManager.LoadScene("UnityPartikles");
+    }public void LoadAlembic()
+    {
+        SceneManager.LoadScene("SampleScene");
     }
 }
