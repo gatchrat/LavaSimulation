@@ -75,9 +75,9 @@ public class SimulationSpawner3D : MonoBehaviour
         //Run 3 Simulation Steps per frame to improve Timestep size while not being slowed down by the render
         if (!Paused)
         {
-            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 240f));
-            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 240f));
-            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 240f));
+            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 240f), true);
+            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 240f), false);
+            ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 240f), false);
         }
         RenderLava();
     }
@@ -206,24 +206,28 @@ public class SimulationSpawner3D : MonoBehaviour
         mesh = GenerateQuadMesh();
         CreateArgsBuffer(mesh, Points.Length);
     }
-    private void ComputeLava(float TimeStep)
+    private void ComputeLava(float TimeStep, bool ComputeHash)
     {
         int CurrentKernel;
-        if (SpawnMode == SpawnMode.Flow)
+
+        ComputeShader.SetFloat("TimePassed", TimeStep);
+        ComputeShader.SetBool("Example2D", Example2D);
+
+        ComputeShader.SetInt("ActiveParticles", ParticleActivated);
+
+        TimePassedOverall += TimeStep;
+        if (SpawnMode == SpawnMode.Flow && ComputeHash)
         {
             CurrentKernel = ComputeShader.FindKernel("Activate");
-            TimePassedOverall += TimeStep;
             int ParticleToActivate = (int)((TimePassedOverall * ParticlePerSecond) - ParticleActivated);
-            ComputeShader.SetInt("ActiveParticles", ParticleActivated);
             ParticleActivated += ParticleToActivate;
-            ComputeShader.SetFloat("TimePassed", TimeStep);
-            ComputeShader.SetBool("Example2D", Example2D);
+            // Debug.Log($"TimePassedOverall {TimePassedOverall} ParticlePerSecond {ParticlePerSecond} ParticleActivated {ParticleActivated} ");
             ComputeShader.SetInt("ParticleToActivate", ParticleToActivate);
             ComputeShader.Dispatch(CurrentKernel, 1, 1, 1);
         }
         else
         {
-            ParticleActivated = Points.Length;
+            //ParticleActivated = Points.Length;
         }
 
         CurrentKernel = ComputeShader.FindKernel("PredictPositions");
@@ -232,44 +236,48 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetInt("ParticleCount", Points.Length);
         ComputeShader.SetFloat("SmoothingRadius", SmoothingRadius);
 
-        CurrentKernel = ComputeShader.FindKernel("UpdateSpatialHash");
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
-        //SpatialKeys[id.x] = key;
-
-        CurrentKernel = ComputeShader.FindKernel("SortHashesNeu");
-        ComputeShader.SetInt("numEntries", Math.Min(ParticleActivated, Points.Length));
-        //Sorts the hash values, but also sorts the index array, so we keep track of witch point has which hash
-        // Launch each step of the sorting algorithm (once the previous step is complete)
-        // Number of steps = [log2(n) * (log2(n) + 1)] / 2
-        // where n = nearest power of 2 that is greater or equal to the number of inputs
-        int numStages = (int)Math.Log(Mathf.NextPowerOfTwo(Math.Min(ParticleActivated, Points.Length)), 2);
-        for (int stageIndex = 0; stageIndex < numStages; stageIndex++)
+        if (ComputeHash)
         {
-            for (int stepIndex = 0; stepIndex < stageIndex + 1; stepIndex++)
+            CurrentKernel = ComputeShader.FindKernel("UpdateSpatialHash");
+            ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
+            //SpatialKeys[id.x] = key;
+
+            CurrentKernel = ComputeShader.FindKernel("SortHashesNeu");
+            ComputeShader.SetInt("numEntries", Math.Min(ParticleActivated, Points.Length));
+            //Sorts the hash values, but also sorts the index array, so we keep track of witch point has which hash
+            // Launch each step of the sorting algorithm (once the previous step is complete)
+            // Number of steps = [log2(n) * (log2(n) + 1)] / 2
+            // where n = nearest power of 2 that is greater or equal to the number of inputs
+            int numStages = (int)Math.Log(Mathf.NextPowerOfTwo(Math.Min(ParticleActivated, Points.Length)), 2);
+            for (int stageIndex = 0; stageIndex < numStages; stageIndex++)
             {
-                // Calculate some pattern stuff
-                int groupWidth = 1 << (stageIndex - stepIndex);
-                int groupHeight = 2 * groupWidth - 1;
-                ComputeShader.SetInt("groupWidth", groupWidth);
-                ComputeShader.SetInt("groupHeight", groupHeight);
-                ComputeShader.SetInt("stepIndex", stepIndex);
-                // Run the sorting step on the GPU
-                ComputeShader.Dispatch(CurrentKernel, Math.Min(ParticleActivated, Points.Length) / 2, 1, 1);
+                for (int stepIndex = 0; stepIndex < stageIndex + 1; stepIndex++)
+                {
+                    // Calculate some pattern stuff
+                    int groupWidth = 1 << (stageIndex - stepIndex);
+                    int groupHeight = 2 * groupWidth - 1;
+                    ComputeShader.SetInt("groupWidth", groupWidth);
+                    ComputeShader.SetInt("groupHeight", groupHeight);
+                    ComputeShader.SetInt("stepIndex", stepIndex);
+                    // Run the sorting step on the GPU
+                    ComputeShader.Dispatch(CurrentKernel, Math.Min(ParticleActivated, Points.Length) / 2, 1, 1);
+                }
             }
+            // Saves for each occuring hash value, where in the array the hash starts, end is found by walking each time
+            //Offsets[key] = index
+            CurrentKernel = ComputeShader.FindKernel("CalculateOffsets");
+            ComputeShader.SetInt("numInputs", Math.Min(ParticleActivated, Points.Length));
+            ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
+
+            // Generates a sorted array of points by going over the hash indexes
+            CurrentKernel = ComputeShader.FindKernel("Reorder");
+            ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
+
+            // Overwrite the point array with the ordered one
+            CurrentKernel = ComputeShader.FindKernel("ReorderCopyBack");
+            ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
         }
-        // Saves for each occuring hash value, where in the array the hash starts, end is found by walking each time
-        //Offsets[key] = index
-        CurrentKernel = ComputeShader.FindKernel("CalculateOffsets");
-        ComputeShader.SetInt("numInputs", Math.Min(ParticleActivated, Points.Length));
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
 
-        // Generates a sorted array of points by going over the hash indexes
-        CurrentKernel = ComputeShader.FindKernel("Reorder");
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
-
-        // Overwrite the point array with the ordered one
-        CurrentKernel = ComputeShader.FindKernel("ReorderCopyBack");
-        ComputeShader.Dispatch(CurrentKernel, Points.Length / 256, 1, 1);
 
         CurrentKernel = ComputeShader.FindKernel("DensityCache");
         ComputeShader.SetFloat("TimePassed", TimeStep);
