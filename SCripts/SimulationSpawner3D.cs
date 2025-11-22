@@ -59,6 +59,8 @@ public class SimulationSpawner3D : MonoBehaviour
     public ComputeBuffer spatialKeys { get; private set; }
     public ComputeBuffer spatialOffsets { get; private set; }
     public ComputeBuffer sortedIndices { get; private set; }
+    ComputeBuffer EdgeTableBuffer;
+    ComputeBuffer TriTableBuffer;
     ComputeBuffer sortTarget_predictedPositionsBuffer;
     ComputeBuffer sortTarget_PointsBuffer;
     private LavaPoint[] Points;
@@ -172,6 +174,23 @@ public class SimulationSpawner3D : MonoBehaviour
         spatialOffsets = new ComputeBuffer(Points.Length, sizeof(uint));
         sortedIndices = new ComputeBuffer(Points.Length, sizeof(uint));
 
+        //Marching Buffers
+
+        EdgeTableBuffer = new ComputeBuffer(256, sizeof(int));
+        TriTableBuffer = new ComputeBuffer(256 * 16, sizeof(int));
+        EdgeTableBuffer.SetData(MarchingCubesTables.edge_table);
+
+        int[] triTable = new int[256 * 16];
+        for (int i = 0; i < 256; i++)
+        {
+            for (int j = 0; j < 16; j++)
+            {
+                triTable[i * 16 + j] = MarchingCubesTables.TriTable[i, j];
+            }
+        }
+        TriTableBuffer.SetData(triTable);
+
+
         //AssignBuffers
         int CurrentKernel;
         if (SpawnMode == SpawnMode.Flow)
@@ -230,6 +249,11 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
+
+
+        CurrentKernel = ComputeShader.FindKernel("March");
+        ComputeShader.SetBuffer(CurrentKernel, "EdgeTable", EdgeTableBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "TriTable", TriTableBuffer);
 
         mesh = GenerateQuadMesh();
         CreateArgsBuffer(mesh, Points.Length);
@@ -344,6 +368,8 @@ public class SimulationSpawner3D : MonoBehaviour
         argsBuffer.Dispose();
         sortTarget_PointsBuffer.Dispose();
         sortTarget_predictedPositionsBuffer.Dispose();
+        TriTableBuffer.Dispose();
+        EdgeTableBuffer.Dispose();
     }
     //----------------------------------RENDERER------------------------------------------
     private void RenderLava()
@@ -505,8 +531,6 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeBuffer vertexCountBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
         ComputeBuffer DensityValuesBuffer = new ComputeBuffer(width * height * depth, sizeof(float));
         ComputeBuffer DensityDebugBuffer = new ComputeBuffer(8, sizeof(float) * 2);
-        ComputeBuffer EdgeTableBuffer = new ComputeBuffer(256, sizeof(int));
-        ComputeBuffer TriTableBuffer = new ComputeBuffer(256 * 16, sizeof(int));
 
         RenderTexture densityTexture = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat)
         {
@@ -540,43 +564,30 @@ public class SimulationSpawner3D : MonoBehaviour
         int dispatchZ = Mathf.CeilToInt(densityTexture.volumeDepth / 8.0f);
         ComputeShader.Dispatch(CurrentKernel, dispatchX, dispatchY, dispatchZ);
 
+        float start = Time.realtimeSinceStartup;
         //Marching Cubes 
-        EdgeTableBuffer.SetData(MarchingCubesTables.edge_table);
-
-        int[] triTable = new int[256 * 16];
-        for (int i = 0; i < 256; i++)
-        {
-            for (int j = 0; j < 16; j++)
-            {
-                triTable[i * 16 + j] = MarchingCubesTables.TriTable[i, j];
-            }
-        }
-        TriTableBuffer.SetData(triTable);
 
         int numVoxelsX = width - 1;
         int numVoxelsY = height - 1;
         int numVoxelsZ = depth - 1;
 
-
         uint[] initialCount = new uint[] { 0 };
         vertexCountBuffer.SetData(initialCount);
         vertexBuffer.SetCounterValue(0);
-
         CurrentKernel = ComputeShader.FindKernel("March");
         ComputeShader.SetBuffer(CurrentKernel, "VertexCount", vertexCountBuffer);
         ComputeShader.SetTexture(CurrentKernel, "DensityTexture", densityTexture);
         ComputeShader.SetBuffer(CurrentKernel, "VertexBuffer", vertexBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "EdgeTable", EdgeTableBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "TriTable", TriTableBuffer);
         ComputeShader.SetInts("GridSize", numVoxelsX, numVoxelsY, numVoxelsZ);
         ComputeShader.SetFloat("IsoLevel", isoLevel);
         ComputeShader.Dispatch(CurrentKernel, dispatchX, dispatchY, dispatchZ);
-
         //Build Mesh
         // Allocate arrays
         uint[] vertexCountArray = new uint[1];
         vertexCountBuffer.GetData(vertexCountArray);
         int vertexCount = (int)vertexCountArray[0];
+
+
 
         // Allocate arrays for mesh creation
         Vector3[] vertices = new Vector3[vertexCount];
@@ -589,7 +600,7 @@ public class SimulationSpawner3D : MonoBehaviour
         {
             triangles[i] = i;
         }
-
+        Debug.Log("March : " + (Time.realtimeSinceStartup - start));
         // Build mesh
         Mesh mesh = new Mesh();
         if (vertexCount > 65535)
@@ -602,8 +613,6 @@ public class SimulationSpawner3D : MonoBehaviour
         LavaGeneratedMesh.mesh = mesh;
 
         //PositionBuffer.Dispose();
-        TriTableBuffer.Dispose();
-        EdgeTableBuffer.Dispose();
         vertexBuffer.Dispose();
         vertexCountBuffer.Dispose();
         DensityValuesBuffer.Dispose();
