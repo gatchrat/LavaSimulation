@@ -56,9 +56,11 @@ public class SimulationSpawner3D : MonoBehaviour
     private RenderTexture SDFTexture;
     private ComputeBuffer PositionBuffer;
     private ComputeBuffer DensityBuffer;
+    ComputeBuffer vertexBuffer;
     public ComputeBuffer spatialKeys { get; private set; }
     public ComputeBuffer spatialOffsets { get; private set; }
     public ComputeBuffer sortedIndices { get; private set; }
+    RenderTexture densityTexture;
     ComputeBuffer EdgeTableBuffer;
     ComputeBuffer TriTableBuffer;
     ComputeBuffer sortTarget_predictedPositionsBuffer;
@@ -175,7 +177,9 @@ public class SimulationSpawner3D : MonoBehaviour
         sortedIndices = new ComputeBuffer(Points.Length, sizeof(uint));
 
         //Marching Buffers
-
+        int width = densityField.GetLength(0);
+        int height = densityField.GetLength(1);
+        int depth = densityField.GetLength(2);
         EdgeTableBuffer = new ComputeBuffer(256, sizeof(int));
         TriTableBuffer = new ComputeBuffer(256 * 16, sizeof(int));
         EdgeTableBuffer.SetData(MarchingCubesTables.edge_table);
@@ -190,6 +194,17 @@ public class SimulationSpawner3D : MonoBehaviour
         }
         TriTableBuffer.SetData(triTable);
 
+
+        vertexBuffer = new ComputeBuffer(width * height * depth * 30, sizeof(float) * 3);
+        densityTexture = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat)
+        {
+            dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
+            volumeDepth = depth,
+            enableRandomWrite = true,
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear
+        };
+        densityTexture.Create();
 
         //AssignBuffers
         int CurrentKernel;
@@ -249,11 +264,13 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "PredictedPosition", PositionBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialKeys", spatialKeys);
         ComputeShader.SetBuffer(CurrentKernel, "SpatialOffsets", spatialOffsets);
-
+        ComputeShader.SetTexture(CurrentKernel, "DensityTexture", densityTexture);
 
         CurrentKernel = ComputeShader.FindKernel("March");
         ComputeShader.SetBuffer(CurrentKernel, "EdgeTable", EdgeTableBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "TriTable", TriTableBuffer);
+        ComputeShader.SetBuffer(CurrentKernel, "VertexBuffer", vertexBuffer);
+        ComputeShader.SetTexture(CurrentKernel, "DensityTexture", densityTexture);
 
         mesh = GenerateQuadMesh();
         CreateArgsBuffer(mesh, Points.Length);
@@ -370,6 +387,8 @@ public class SimulationSpawner3D : MonoBehaviour
         sortTarget_predictedPositionsBuffer.Dispose();
         TriTableBuffer.Dispose();
         EdgeTableBuffer.Dispose();
+
+        vertexBuffer.Dispose();
     }
     //----------------------------------RENDERER------------------------------------------
     private void RenderLava()
@@ -527,21 +546,9 @@ public class SimulationSpawner3D : MonoBehaviour
         int width = densityField.GetLength(0);
         int height = densityField.GetLength(1);
         int depth = densityField.GetLength(2);
-        ComputeBuffer vertexBuffer = new ComputeBuffer(width * height * depth * 30, sizeof(float) * 3);
         ComputeBuffer vertexCountBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
         ComputeBuffer DensityValuesBuffer = new ComputeBuffer(width * height * depth, sizeof(float));
         ComputeBuffer DensityDebugBuffer = new ComputeBuffer(8, sizeof(float) * 2);
-
-        RenderTexture densityTexture = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat)
-        {
-            dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
-            volumeDepth = depth,
-            enableRandomWrite = true,
-            wrapMode = TextureWrapMode.Clamp,
-            filterMode = FilterMode.Bilinear
-        };
-        densityTexture.Create();
-
 
         float[] DensityValues = new float[width * height * depth];
         DensityValuesBuffer.SetData(DensityValues);
@@ -556,7 +563,6 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetInt("ParticleCount", Points.Length);
         ComputeShader.SetFloat("VoxelSize", voxelSize);
         ComputeShader.SetBuffer(CurrentKernel, "DensityValuesBuffer", DensityValuesBuffer);
-        ComputeShader.SetTexture(CurrentKernel, "DensityTexture", densityTexture);
         ComputeShader.SetBuffer(CurrentKernel, "DensityDebugBuffer", DensityDebugBuffer);
 
         int dispatchX = Mathf.CeilToInt(densityTexture.width / 8.0f);
@@ -576,8 +582,6 @@ public class SimulationSpawner3D : MonoBehaviour
         vertexBuffer.SetCounterValue(0);
         CurrentKernel = ComputeShader.FindKernel("March");
         ComputeShader.SetBuffer(CurrentKernel, "VertexCount", vertexCountBuffer);
-        ComputeShader.SetTexture(CurrentKernel, "DensityTexture", densityTexture);
-        ComputeShader.SetBuffer(CurrentKernel, "VertexBuffer", vertexBuffer);
         ComputeShader.SetInts("GridSize", numVoxelsX, numVoxelsY, numVoxelsZ);
         ComputeShader.SetFloat("IsoLevel", isoLevel);
         ComputeShader.Dispatch(CurrentKernel, dispatchX, dispatchY, dispatchZ);
@@ -600,7 +604,7 @@ public class SimulationSpawner3D : MonoBehaviour
         {
             triangles[i] = i;
         }
-        Debug.Log("March : " + (Time.realtimeSinceStartup - start));
+        //  Debug.Log("March : " + (Time.realtimeSinceStartup - start));
         // Build mesh
         Mesh mesh = new Mesh();
         if (vertexCount > 65535)
@@ -613,7 +617,6 @@ public class SimulationSpawner3D : MonoBehaviour
         LavaGeneratedMesh.mesh = mesh;
 
         //PositionBuffer.Dispose();
-        vertexBuffer.Dispose();
         vertexCountBuffer.Dispose();
         DensityValuesBuffer.Dispose();
         DensityDebugBuffer.Dispose();
