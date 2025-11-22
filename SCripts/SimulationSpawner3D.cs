@@ -2,6 +2,10 @@ using UnityEngine;
 using System;
 using UnityEngine.Experimental.Rendering;
 using System.Collections.Generic;
+using Unity.Collections;
+using UnityEngine.Rendering;
+using System.Collections;
+using UnityEngine.Networking; // not necessary but kept for AsyncGPUReadback
 
 public enum SpawnMode
 {
@@ -88,6 +92,7 @@ public class SimulationSpawner3D : MonoBehaviour
     [Range(0.05f, 1f)]
     public float voxelSize = 0.1f;
     public MeshFilter LavaGeneratedMesh;
+    Mesh CurLavaMesh;
 
     void Start()
     {
@@ -118,6 +123,9 @@ public class SimulationSpawner3D : MonoBehaviour
         props = new MaterialPropertyBlock();
         PredictedPositions = new Vector3[Points.Length];
         densityField = new float[(int)(BoundsWidth / voxelSize), (int)(BoundsHeight / voxelSize), (int)(BoundsDepth / voxelSize)];
+        CurLavaMesh = new Mesh();
+        CurLavaMesh.MarkDynamic();
+        CurLavaMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
         InitBuffers();
 
     }
@@ -595,15 +603,11 @@ public class SimulationSpawner3D : MonoBehaviour
         }
         //  Debug.Log("March : " + (Time.realtimeSinceStartup - start));
         // Build mesh
-        Mesh mesh = new Mesh();
-        if (vertexCount > 65535)
-        {
-            mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-        }
-        mesh.vertices = vertices;
-        mesh.triangles = triangles;
-        mesh.RecalculateNormals();
-        LavaGeneratedMesh.mesh = mesh;
+        CurLavaMesh.Clear(false);
+        CurLavaMesh.vertices = vertices;
+        CurLavaMesh.triangles = triangles;
+        CurLavaMesh.RecalculateNormals();
+        LavaGeneratedMesh.mesh = CurLavaMesh;
         vertexCountBuffer.Dispose();
     }
 }
