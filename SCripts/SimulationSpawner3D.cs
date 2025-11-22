@@ -389,6 +389,7 @@ public class SimulationSpawner3D : MonoBehaviour
         EdgeTableBuffer.Dispose();
 
         vertexBuffer.Dispose();
+        densityTexture.Release();
     }
     //----------------------------------RENDERER------------------------------------------
     private void RenderLava()
@@ -547,30 +548,18 @@ public class SimulationSpawner3D : MonoBehaviour
         int height = densityField.GetLength(1);
         int depth = densityField.GetLength(2);
         ComputeBuffer vertexCountBuffer = new ComputeBuffer(1, sizeof(uint), ComputeBufferType.Raw);
-        ComputeBuffer DensityValuesBuffer = new ComputeBuffer(width * height * depth, sizeof(float));
-        ComputeBuffer DensityDebugBuffer = new ComputeBuffer(8, sizeof(float) * 2);
-
-        float[] DensityValues = new float[width * height * depth];
-        DensityValuesBuffer.SetData(DensityValues);
 
         int CurrentKernel = ComputeShader.FindKernel("DensityField");
-        Vector2[] Densities = new Vector2[8];
-        DensityDebugBuffer.SetData(Densities);
 
         ComputeShader.SetInt("FieldWidth", width);
         ComputeShader.SetInt("FieldHeight", height);
         ComputeShader.SetInt("FieldDepth", depth);
         ComputeShader.SetInt("ParticleCount", Points.Length);
         ComputeShader.SetFloat("VoxelSize", voxelSize);
-        ComputeShader.SetBuffer(CurrentKernel, "DensityValuesBuffer", DensityValuesBuffer);
-        ComputeShader.SetBuffer(CurrentKernel, "DensityDebugBuffer", DensityDebugBuffer);
-
         int dispatchX = Mathf.CeilToInt(densityTexture.width / 8.0f);
         int dispatchY = Mathf.CeilToInt(densityTexture.height / 8.0f);
         int dispatchZ = Mathf.CeilToInt(densityTexture.volumeDepth / 8.0f);
         ComputeShader.Dispatch(CurrentKernel, dispatchX, dispatchY, dispatchZ);
-
-        float start = Time.realtimeSinceStartup;
         //Marching Cubes 
 
         int numVoxelsX = width - 1;
@@ -615,11 +604,7 @@ public class SimulationSpawner3D : MonoBehaviour
         mesh.triangles = triangles;
         mesh.RecalculateNormals();
         LavaGeneratedMesh.mesh = mesh;
-
-        //PositionBuffer.Dispose();
         vertexCountBuffer.Dispose();
-        DensityValuesBuffer.Dispose();
-        DensityDebugBuffer.Dispose();
     }
 }
 

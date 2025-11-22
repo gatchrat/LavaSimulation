@@ -42,10 +42,8 @@ float MaxAge;
 bool Example2D;
 
 RWStructuredBuffer<float3> PredictedPosition;
-RWStructuredBuffer<float> DensityValuesBuffer;
 RWTexture3D<float> DensityTexture; // 3D Density Field
 RWStructuredBuffer<float2> CachedDensities;
-RWStructuredBuffer<float2> DensityDebugBuffer;
 RWStructuredBuffer<float3> VertexBuffer;
 RWStructuredBuffer<int> VertexCount;
 RWStructuredBuffer<float> SDFValues;
@@ -611,18 +609,10 @@ void DensityField (uint3 id : SV_DispatchThreadID) {
     if ((id.z >= FieldDepth)) return;
 
     float3 RealPos = float3(-FieldWidth/2,0,-FieldDepth/2)* VoxelSize + ((float3)id) * VoxelSize;
-    //float3 RealPos = float3(1,1,1);
-    if(id.x ==4 && id.y == 13 && id.z== 7) {
-        DensityDebugBuffer[1] = float2(id.x,id.y);
-        DensityDebugBuffer[2] =   CalcDensityFromPos(RealPos);
-    }
 
     if(isBorder(id)) {
-        // DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight] = 0;
         DensityTexture[id] =  0;
     }else {
-        //DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight] = CalcDensity(RealPos);
-        //DensityTexture[id] = DensityValuesBuffer[id.x+id.y*FieldWidth+id.z*FieldWidth*FieldHeight];
         DensityTexture[id] =CalcDensityFromPos(RealPos)[0];
     }
 }
