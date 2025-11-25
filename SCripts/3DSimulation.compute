@@ -47,6 +47,7 @@ RWStructuredBuffer<float2> CachedDensities;
 RWStructuredBuffer<float3> VertexBuffer;
 RWStructuredBuffer<int> VertexCount;
 RWStructuredBuffer<float> SDFValues;
+RWStructuredBuffer<float3> NormalBuffer;
 
 //SEB
 RWStructuredBuffer<uint> SpatialKeys; // used for spatial hashing
@@ -650,18 +651,33 @@ float3 VertexInterp(float iso, float3 p1, float3 p2, float valp1, float valp2) {
     return lerp(p1, p2, t);
 }
 
+//SMOOTHING https://paulbourke.net/geometry/polygonise/
+float3 ComputeNormalVoxel(float3 p) {
+    int3 ip = int3(round(p)); 
+
+    float dx = DensityTexture.Load(int4(ip + int3(1,0,0), 0)) -
+    DensityTexture.Load(int4(ip - int3(1,0,0), 0));
+    float dy = DensityTexture.Load(int4(ip + int3(0,1,0), 0)) -
+    DensityTexture.Load(int4(ip - int3(0,1,0), 0));
+    float dz = DensityTexture.Load(int4(ip + int3(0,0,1), 0)) -
+    DensityTexture.Load(int4(ip - int3(0,0,1), 0));
+
+    float3 n = float3(-dx, -dy, -dz);
+    return normalize(n);
+}
+
 [numthreads(8,8,8)]
 void March(uint3 id : SV_DispatchThreadID) {
     if (id.x >= GridSize.x || id.y >= GridSize.y || id.z >= GridSize.z) return;
 
     float cube[8];
-    float3 pos[8];
+    float3 pos[8]; 
 
-    // Sample density field and convert to world positions
+    // Sample density field and positions
     for (int i = 0; i < 8; i++) {
-        int3 offset = id + vertexOffset[i];
+        int3 offset = int3(id) + vertexOffset[i];
         cube[i] = DensityTexture.Load(int4(offset, 0));
-        pos[i] = offset *VoxelSize;
+        pos[i] = float3(offset);
     }
 
     // Build cube index
@@ -678,7 +694,6 @@ void March(uint3 id : SV_DispatchThreadID) {
     for (i = 0; i < 12; i++) {
         if (edgeFlags & (1 << i)) {
             int2 e = edgeVertexIndices[i];
-            // Use the midpoint of the edge (between the two vertices)
             vertList[i] = VertexInterp(IsoLevel, pos[e.x], pos[e.y], cube[e.x], cube[e.y]);
         }
     }
@@ -686,19 +701,40 @@ void March(uint3 id : SV_DispatchThreadID) {
     // Create triangles
     for (i = 0; i < 16; i += 3) {
         int index1 = TriTable[cubeIndex * 16 + i];
-        if (index1 == -1) break; // End of triangles for this cube
+        if (index1 == -1) break;
 
         int index2 = TriTable[cubeIndex * 16 + i + 1];
-        if (index2 == -1) break; 
+        if (index2 == -1) break;
+
         int index3 = TriTable[cubeIndex * 16 + i + 2];
-        if (index3 == -1) break; 
+        if (index3 == -1) break;
 
         uint baseIndex;
         InterlockedAdd(VertexCount[0], 3, baseIndex); // Reserve space for 3 vertices
 
-        //Unity does clockwise not counterclockwise
-        VertexBuffer[baseIndex+2] = vertList[index1]+float3(-BoundsWidth/2,0,-BoundsDepth/2);
-        VertexBuffer[baseIndex + 1] = vertList[index2]+float3(-BoundsWidth/2,0,-BoundsDepth/2);
-        VertexBuffer[baseIndex] = vertList[index3]+float3(-BoundsWidth/2,0,-BoundsDepth/2);
+        // voxel-space positions for normals
+        float3 vVoxel1 = vertList[index1];
+        float3 vVoxel2 = vertList[index2];
+        float3 vVoxel3 = vertList[index3];
+
+        // Compute normals in voxel-space
+        float3 n1 = ComputeNormalVoxel(vVoxel1);
+        float3 n2 = ComputeNormalVoxel(vVoxel2);
+        float3 n3 = ComputeNormalVoxel(vVoxel3);
+
+        // Convert vertices to world-space when writing to the VertexBuffer
+        float3 posWorld1 = vVoxel1 * VoxelSize + float3(-BoundsWidth/2,0,-BoundsDepth/2);
+        float3 posWorld2 = vVoxel2 * VoxelSize + float3(-BoundsWidth/2,0,-BoundsDepth/2);
+        float3 posWorld3 = vVoxel3 * VoxelSize + float3(-BoundsWidth/2,0,-BoundsDepth/2);
+
+        // Unity expects clockwise order you used previously
+        VertexBuffer[baseIndex+2] = posWorld1;
+        VertexBuffer[baseIndex+1] = posWorld2;
+        VertexBuffer[baseIndex] = posWorld3;
+
+        // Write normals (these are already normalized)
+        NormalBuffer[baseIndex+2] = n1;
+        NormalBuffer[baseIndex+1] = n2;
+        NormalBuffer[baseIndex] = n3;
     }
 }

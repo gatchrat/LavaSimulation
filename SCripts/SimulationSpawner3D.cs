@@ -2,10 +2,7 @@ using UnityEngine;
 using System;
 using UnityEngine.Experimental.Rendering;
 using System.Collections.Generic;
-using Unity.Collections;
-using UnityEngine.Rendering;
-using System.Collections;
-using UnityEngine.Networking; // not necessary but kept for AsyncGPUReadback
+
 
 public enum SpawnMode
 {
@@ -64,6 +61,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public ComputeBuffer spatialKeys { get; private set; }
     public ComputeBuffer spatialOffsets { get; private set; }
     public ComputeBuffer sortedIndices { get; private set; }
+    ComputeBuffer normalBuffer;
     RenderTexture densityTexture;
     ComputeBuffer EdgeTableBuffer;
     ComputeBuffer TriTableBuffer;
@@ -192,6 +190,7 @@ public class SimulationSpawner3D : MonoBehaviour
         TriTableBuffer = new ComputeBuffer(256 * 16, sizeof(int));
         EdgeTableBuffer.SetData(MarchingCubesTables.edge_table);
 
+
         int[] triTable = new int[256 * 16];
         for (int i = 0; i < 256; i++)
         {
@@ -204,6 +203,7 @@ public class SimulationSpawner3D : MonoBehaviour
 
 
         vertexBuffer = new ComputeBuffer(width * height * depth * 30, sizeof(float) * 3);
+        normalBuffer = new ComputeBuffer(width * height * depth * 30, sizeof(float) * 3);
         densityTexture = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat)
         {
             dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
@@ -279,6 +279,7 @@ public class SimulationSpawner3D : MonoBehaviour
         ComputeShader.SetBuffer(CurrentKernel, "TriTable", TriTableBuffer);
         ComputeShader.SetBuffer(CurrentKernel, "VertexBuffer", vertexBuffer);
         ComputeShader.SetTexture(CurrentKernel, "DensityTexture", densityTexture);
+        ComputeShader.SetBuffer(CurrentKernel, "NormalBuffer", normalBuffer);
 
         mesh = GenerateQuadMesh();
         CreateArgsBuffer(mesh, Points.Length);
@@ -398,6 +399,7 @@ public class SimulationSpawner3D : MonoBehaviour
 
         vertexBuffer.Dispose();
         densityTexture.Release();
+        normalBuffer.Dispose();
     }
     //----------------------------------RENDERER------------------------------------------
     private void RenderLava()
@@ -592,10 +594,12 @@ public class SimulationSpawner3D : MonoBehaviour
 
         // Allocate arrays for mesh creation
         Vector3[] vertices = new Vector3[vertexCount];
+        Vector3[] normals = new Vector3[vertexCount];
         int[] triangles = new int[vertexCount];
 
-        // Read the vertex data - only read up to the actual count
+        // Read the  data - only read up to the actual count
         vertexBuffer.GetData(vertices, 0, 0, vertexCount);
+        normalBuffer.GetData(normals, 0, 0, vertexCount);
         // Generate triangle indices
         for (int i = 0; i < vertexCount; i++)
         {
@@ -606,7 +610,9 @@ public class SimulationSpawner3D : MonoBehaviour
         CurLavaMesh.Clear(false);
         CurLavaMesh.vertices = vertices;
         CurLavaMesh.triangles = triangles;
-        CurLavaMesh.RecalculateNormals();
+        CurLavaMesh.normals = normals;
+        //CurLavaMesh.RecalculateNormals();
+        CurLavaMesh.RecalculateBounds();
         LavaGeneratedMesh.mesh = CurLavaMesh;
         vertexCountBuffer.Dispose();
     }
