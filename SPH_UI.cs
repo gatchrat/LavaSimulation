@@ -27,6 +27,8 @@ public class SPH_UI : MonoBehaviour
     public Slider Viscosity;
     public TMP_Text ParticleScaleText;
     public Slider ParticleScale;
+    public TMP_Text VoxelText;
+    public Slider VoxelSize;
     public TMP_InputField SpawnPosX;
     public TMP_InputField SpawnPosY;
     public TMP_InputField SpawnPosZ;
@@ -45,6 +47,8 @@ public class SPH_UI : MonoBehaviour
         TempExchange.text = Simulation.TemperatureExchangeSpeedModifier.ToString();
         ParticlesPerSecond.value = Simulation.ParticlePerSecond;
         SetParticlePerSecond();
+        VoxelSize.value = Simulation.voxelSize;
+        setVoxelSize();
         Density.value = Simulation.TargetDensity;
         SetDensity();
         Pressure.value = Simulation.PressureMultiplier;
@@ -166,5 +170,14 @@ public class SPH_UI : MonoBehaviour
     {
         Simulation.DisposeBuffers();
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+    public void setVoxelSize()
+    {
+        Simulation.SetVoxelSize(VoxelSize.value / 10);
+        VoxelText.text = "Voxel Size " + VoxelSize.value;
+    }
+    public void ToggleSmoothing()
+    {
+        Simulation.Smoothed = !Simulation.Smoothed;
     }
 }
