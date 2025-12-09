@@ -10,6 +10,11 @@ public enum SpawnMode
     AtOnceRandom,
     Flow
 }
+public enum RenderMode
+{
+    Particle,
+    CubeMarching
+}
 public struct HashEntry
 {
     public uint hash;
@@ -28,6 +33,7 @@ public class SimulationSpawner3D : MonoBehaviour
 {
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     public ComputeShader ComputeShader;
+    public RenderMode RenderMode = RenderMode.CubeMarching;
     public String SDFFileName;
     public LavaGenerator LavaGenerator;
     ComputeBuffer argsBuffer;
@@ -107,8 +113,15 @@ public class SimulationSpawner3D : MonoBehaviour
             ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f), false);
             ComputeLava(Mathf.Min(Time.deltaTime / 3f, 1f / 180f), false);
         }
-        //RenderLava();
-        RenderLavaAsMesh();
+        if (RenderMode == RenderMode.Particle)
+        {
+            RenderLavaWithParticles();
+            LavaGeneratedMesh.mesh = null;
+        }
+        else
+        {
+            RenderLavaAsMesh();
+        }
     }
 
     void OnApplicationQuit()
@@ -415,7 +428,7 @@ public class SimulationSpawner3D : MonoBehaviour
         normalBuffer.Dispose();
     }
     //----------------------------------RENDERER------------------------------------------
-    private void RenderLava()
+    private void RenderLavaWithParticles()
     {
         //Restart at the end of the update loop since we dont know when the restart is triggered and the buffers may be in active use
         if (Restarting)

@@ -180,4 +180,15 @@ public class SPH_UI : MonoBehaviour
     {
         Simulation.Smoothed = !Simulation.Smoothed;
     }
+    public void ToggleOldRenderer()
+    {
+        if (Simulation.RenderMode == RenderMode.CubeMarching)
+        {
+            Simulation.RenderMode = RenderMode.Particle;
+        }
+        else
+        {
+            Simulation.RenderMode = RenderMode.CubeMarching;
+        }
+    }
 }
