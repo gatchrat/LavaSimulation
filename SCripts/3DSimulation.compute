@@ -645,9 +645,10 @@ static const int2 edgeVertexIndices[12] = {
     int2(2, 6)  // 11
 };
 
-float3 VertexInterp(float iso, float3 p1, float3 p2, float valp1, float valp2) {
-    if (abs(valp2 - valp1) < 1e-6) return 0.5 * (p1 + p2);
-    float t = (iso - valp1) / (valp2 - valp1);
+float3 VertexInterp(float iso, float3 p1, float3 p2, float DensityAtP1, float DensityAtP2) {
+    //Zu wenig unterschied -> Wir sparen uns das lerpen
+    if (abs(DensityAtP2 - DensityAtP1) < 1e-6) return 0.5 * (p1 + p2);
+    float t = (iso - DensityAtP1) / (DensityAtP2 - DensityAtP1);
     return lerp(p1, p2, t);
 }
 

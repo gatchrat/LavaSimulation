@@ -101,6 +101,8 @@ public class SimulationSpawner3D : MonoBehaviour
 
     void Start()
     {
+        var maxSizeMb = SystemInfo.maxGraphicsBufferSize / 1024 / 1024;
+        Debug.Log($"Maximum graphics buffer size is {maxSizeMb} MB");
         InitStuff();
     }
     void Update()
@@ -284,9 +286,10 @@ public class SimulationSpawner3D : MonoBehaviour
         }
         TriTableBuffer.SetData(triTable);
 
-
-        vertexBuffer = new ComputeBuffer(width * height * depth * 30, sizeof(float) * 3);
-        normalBuffer = new ComputeBuffer(width * height * depth * 30, sizeof(float) * 3);
+        //Jeder Cube kann 15 Vertices generieren, jeder Vertex ist 3 Float3
+        Debug.Log(Math.Min(width * height * depth * 15 * 3, (SystemInfo.maxGraphicsBufferSize / (sizeof(float) * 3))) * sizeof(float) * 3);
+        vertexBuffer = new ComputeBuffer(Math.Min(width * height * depth * 15 * 3, (int)(SystemInfo.maxGraphicsBufferSize / (sizeof(float) * 3))), sizeof(float) * 3);
+        normalBuffer = new ComputeBuffer(Math.Min(width * height * depth * 15 * 3, (int)(SystemInfo.maxGraphicsBufferSize / (sizeof(float) * 3))), sizeof(float) * 3);
         densityTexture = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat)
         {
             dimension = UnityEngine.Rendering.TextureDimension.Tex3D,

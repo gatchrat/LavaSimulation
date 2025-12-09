@@ -48,7 +48,6 @@ public class SPH_UI : MonoBehaviour
         ParticlesPerSecond.value = Simulation.ParticlePerSecond;
         SetParticlePerSecond();
         VoxelSize.value = Simulation.voxelSize;
-        setVoxelSize();
         Density.value = Simulation.TargetDensity;
         SetDensity();
         Pressure.value = Simulation.PressureMultiplier;
@@ -173,7 +172,7 @@ public class SPH_UI : MonoBehaviour
     }
     public void setVoxelSize()
     {
-        Simulation.SetVoxelSize(VoxelSize.value / 10);
+        Simulation.SetVoxelSize(VoxelSize.value / 100);
         VoxelText.text = "Voxel Size " + VoxelSize.value;
     }
     public void ToggleSmoothing()
