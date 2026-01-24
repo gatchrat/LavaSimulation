@@ -649,6 +649,7 @@ float3 VertexInterp(float iso, float3 p1, float3 p2, float DensityAtP1, float De
     //Zu wenig unterschied -> Wir sparen uns das lerpen
     if (abs(DensityAtP2 - DensityAtP1) < 1e-6) return 0.5 * (p1 + p2);
     float t = (iso - DensityAtP1) / (DensityAtP2 - DensityAtP1);
+    t = saturate(t);
     return lerp(p1, p2, t);
 }
 
@@ -728,12 +729,12 @@ void March(uint3 id : SV_DispatchThreadID) {
         float3 posWorld2 = vVoxel2 * VoxelSize + float3(-BoundsWidth/2,0,-BoundsDepth/2);
         float3 posWorld3 = vVoxel3 * VoxelSize + float3(-BoundsWidth/2,0,-BoundsDepth/2);
 
-        // Unity expects clockwise order you used previously
+        // Unity expects clockwise order
         VertexBuffer[baseIndex+2] = posWorld1;
         VertexBuffer[baseIndex+1] = posWorld2;
         VertexBuffer[baseIndex] = posWorld3;
 
-        // Write normals (these are already normalized)
+        // Write normals
         NormalBuffer[baseIndex+2] = n1;
         NormalBuffer[baseIndex+1] = n2;
         NormalBuffer[baseIndex] = n3;
