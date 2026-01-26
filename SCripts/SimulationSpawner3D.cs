@@ -84,14 +84,7 @@ public class SimulationSpawner3D : MonoBehaviour
     public Boolean Example2D = false;
 
     //MESH RENDERING
-    public Material Material;
-    private MaterialPropertyBlock props;
-    private List<Matrix4x4> matrices = new List<Matrix4x4>();
-    private List<Vector4> colors = new List<Vector4>();
     float[,,] densityField;
-    private HashEntry[] Hashes;
-    private int NumOfPossibleHashes;
-    private uint[] StartingIndizes;
     public float isoLevel = 0.3f;
     [Range(0.05f, 1f)]
     public float voxelSize = 0.1f;
@@ -134,7 +127,6 @@ public class SimulationSpawner3D : MonoBehaviour
     {
         LoadSDF();
         InitLava();
-        props = new MaterialPropertyBlock();
         PredictedPositions = new Vector3[Points.Length];
         densityField = new float[(int)(BoundsWidth / voxelSize), (int)(BoundsHeight / voxelSize), (int)(BoundsDepth / voxelSize)];
         CurLavaMesh = new Mesh();
@@ -287,7 +279,6 @@ public class SimulationSpawner3D : MonoBehaviour
         TriTableBuffer.SetData(triTable);
 
         //Jeder Cube kann 15 Vertices generieren, jeder Vertex ist 3 Float3
-        Debug.Log(Math.Min(width * height * depth * 15 * 3, (SystemInfo.maxGraphicsBufferSize / (sizeof(float) * 3))) * sizeof(float) * 3);
         vertexBuffer = new ComputeBuffer(Math.Min(width * height * depth * 15 * 3, (int)(SystemInfo.maxGraphicsBufferSize / (sizeof(float) * 3))), sizeof(float) * 3);
         normalBuffer = new ComputeBuffer(Math.Min(width * height * depth * 15 * 3, (int)(SystemInfo.maxGraphicsBufferSize / (sizeof(float) * 3))), sizeof(float) * 3);
         densityTexture = new RenderTexture(width, height, 0, RenderTextureFormat.RFloat)
@@ -351,7 +342,7 @@ public class SimulationSpawner3D : MonoBehaviour
 
             CurrentKernel = ComputeShader.FindKernel("SortHashesNeu");
             ComputeShader.SetInt("numEntries", Math.Min(ParticleActivated, Points.Length));
-            //Sorts the hash values, but also sorts the index array, so we keep track of witch point has which hash
+            //Sorts the hash values, but also sorts the index array, so we keep track of which point has which hash
             // Launch each step of the sorting algorithm (once the previous step is complete)
             // Number of steps = [log2(n) * (log2(n) + 1)] / 2
             // where n = nearest power of 2 that is greater or equal to the number of inputs
