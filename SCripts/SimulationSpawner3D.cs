@@ -15,12 +15,6 @@ public enum RenderMode
     Particle,
     CubeMarching
 }
-public struct HashEntry
-{
-    public uint hash;
-    public uint index;
-}
-
 public struct LavaPoint
 {
     public Vector3 Position;
@@ -52,7 +46,6 @@ public class SimulationSpawner3D : MonoBehaviour
     public float NearPressureMultiplier;
     public float SmoothingRadius = 10f;
     public float RenderScale = 1f;
-    private Mesh Mesh;
     public float Viscosity = 1f;
 
     [Header("SDF Settings")]
@@ -111,7 +104,7 @@ public class SimulationSpawner3D : MonoBehaviour
         if (RenderMode == RenderMode.Particle)
         {
             RenderLavaWithParticles();
-            LavaGeneratedMesh.mesh = null;
+            LavaGeneratedMesh.mesh.Clear(false);
         }
         else
         {
