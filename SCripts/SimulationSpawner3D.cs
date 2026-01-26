@@ -420,6 +420,7 @@ public class SimulationSpawner3D : MonoBehaviour
         vertexBuffer.Dispose();
         densityTexture.Release();
         normalBuffer.Dispose();
+        CurLavaMesh.Clear(false);
     }
     //----------------------------------RENDERER------------------------------------------
     private void RenderLavaWithParticles()
@@ -574,6 +575,12 @@ public class SimulationSpawner3D : MonoBehaviour
     ///////////////////////////////
     private void RenderLavaAsMesh()
     {
+        if (Restarting)
+        {
+            Restarting = false;
+            Restart();
+            return;
+        }
         int width = densityField.GetLength(0);
         int height = densityField.GetLength(1);
         int depth = densityField.GetLength(2);
