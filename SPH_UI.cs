@@ -47,7 +47,8 @@ public class SPH_UI : MonoBehaviour
         TempExchange.text = Simulation.TemperatureExchangeSpeedModifier.ToString();
         ParticlesPerSecond.value = Simulation.ParticlePerSecond;
         SetParticlePerSecond();
-        VoxelSize.value = Simulation.voxelSize;
+        VoxelSize.value = Simulation.voxelSize * 100;
+        setVoxelSize();
         Density.value = Simulation.TargetDensity;
         SetDensity();
         Pressure.value = Simulation.PressureMultiplier;
